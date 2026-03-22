@@ -1,0 +1,173 @@
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  getMyProjectsApi, deleteProjectApi, submitProjectApi,
+  type ProjectInfo, type ProjectFormData,
+} from '@/api/project'
+import ProjectForm from './ProjectForm.vue'
+
+const router = useRouter()
+const loading = ref(false)
+const projectList = ref<ProjectInfo[]>([])
+const total = ref(0)
+const page = ref(1)
+const pageSize = ref(10)
+const filterStatus = ref('')
+
+// 表单弹窗
+const formVisible = ref(false)
+const editData = ref<ProjectFormData | null>(null)
+
+const statusTagType: Record<string, string> = {
+  draft: 'info',
+  pending: 'warning',
+  published: 'success',
+  registration_closed: 'warning',
+  in_progress: '',
+  completed: 'info',
+}
+
+async function fetchList() {
+  loading.value = true
+  try {
+    const res = await getMyProjectsApi({
+      status: filterStatus.value || undefined,
+      page: page.value,
+      pageSize: pageSize.value,
+    })
+    projectList.value = res.data.list
+    total.value = res.data.total
+  } finally {
+    loading.value = false
+  }
+}
+
+function handleCreate() {
+  editData.value = null
+  formVisible.value = true
+}
+
+function handleEdit(row: ProjectInfo) {
+  editData.value = {
+    id: row.id,
+    title: row.title,
+    content: row.content,
+    location: row.location,
+    category: row.category,
+    startTime: row.startTime || '',
+    endTime: row.endTime || '',
+    registrationDeadline: row.registrationDeadline || '',
+    maxPeople: row.maxPeople,
+    contact: row.contact,
+    notice: row.notice,
+  }
+  formVisible.value = true
+}
+
+async function handleDelete(row: ProjectInfo) {
+  await ElMessageBox.confirm('确定删除该项目？', '确认删除', { type: 'warning' })
+  await deleteProjectApi(row.id)
+  ElMessage.success('删除成功')
+  fetchList()
+}
+
+async function handleSubmit(row: ProjectInfo) {
+  await ElMessageBox.confirm('确定提交审核？提交后将无法编辑。', '确认提交', { type: 'info' })
+  await submitProjectApi(row.id)
+  ElMessage.success('已提交审核')
+  fetchList()
+}
+
+function goDetail(id: number) {
+  router.push(`/project/${id}`)
+}
+
+function handlePageChange(p: number) {
+  page.value = p
+  fetchList()
+}
+
+function handleFilter() {
+  page.value = 1
+  fetchList()
+}
+
+onMounted(fetchList)
+</script>
+
+<template>
+  <div>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-bold text-gray-800 m-0">项目管理</h2>
+      <el-button type="primary" @click="handleCreate">
+        <el-icon><Plus /></el-icon> 新建项目
+      </el-button>
+    </div>
+
+    <!-- 筛选 -->
+    <div class="mb-4">
+      <el-select v-model="filterStatus" placeholder="按状态筛选" clearable @change="handleFilter" style="width: 150px">
+        <el-option label="草稿" value="draft" />
+        <el-option label="待审核" value="pending" />
+        <el-option label="已发布" value="published" />
+        <el-option label="进行中" value="in_progress" />
+        <el-option label="已结束" value="completed" />
+      </el-select>
+    </div>
+
+    <!-- 表格 -->
+    <el-table :data="projectList" v-loading="loading" stripe>
+      <el-table-column prop="title" label="项目名称" min-width="180">
+        <template #default="{ row }">
+          <el-link type="primary" @click="goDetail(row.id)">{{ row.title }}</el-link>
+        </template>
+      </el-table-column>
+      <el-table-column prop="category" label="类型" width="100" />
+      <el-table-column label="状态" width="100" align="center">
+        <template #default="{ row }">
+          <el-tag :type="statusTagType[row.status] || 'info'" size="small">{{ row.statusLabel }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="招募人数" width="90" align="center">
+        <template #default="{ row }">{{ row.maxPeople }}</template>
+      </el-table-column>
+      <el-table-column label="创建时间" width="170">
+        <template #default="{ row }">{{ row.createdAt?.replace('T', ' ').slice(0, 16) || '--' }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="250" fixed="right">
+        <template #default="{ row }">
+          <template v-if="row.status === 'draft'">
+            <el-button type="primary" text size="small" @click="handleEdit(row)">编辑</el-button>
+            <el-button type="warning" text size="small" @click="handleSubmit(row)">提交审核</el-button>
+            <el-button type="danger" text size="small" @click="handleDelete(row)">删除</el-button>
+          </template>
+          <template v-else-if="row.status === 'pending'">
+            <el-text type="warning" size="small">审核中</el-text>
+          </template>
+          <template v-else>
+            <el-button type="primary" text size="small" @click="goDetail(row.id)">查看</el-button>
+          </template>
+          <el-text v-if="row.reviewRemark" type="info" size="small" class="ml-2">
+            审核意见：{{ row.reviewRemark }}
+          </el-text>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <!-- 分页 -->
+    <div class="flex justify-end mt-4">
+      <el-pagination
+        :current-page="page"
+        :page-size="pageSize"
+        :total="total"
+        layout="total, prev, pager, next"
+        @current-change="handlePageChange"
+      />
+    </div>
+
+    <!-- 新建/编辑弹窗 -->
+    <ProjectForm v-model:visible="formVisible" :edit-data="editData" @saved="fetchList" />
+  </div>
+</template>
