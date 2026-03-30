@@ -112,6 +112,133 @@ def generate_certificate_text_stream(user_name, project_title, duration_hours, c
         yield _sse_done()
 
 
+# ========== 自然语言查询 ==========
+
+def nl_query_stream(question, user_id, role='student'):
+    """自然语言数据查询（生成式UI版）：直接转发给 Dify Agent，后端透传 SSE 流并解析 ```chart 块"""
+    base_url = _get_base_url()
+    api_key = current_app.config.get('DIFY_NL_API_KEY', '')
+
+    yield _sse_data({'type': 'status', 'content': 'AI 正在查询数据库并分析...'})
+
+    if not base_url or not api_key:
+        yield _sse_data({'content': 'AI数据查询服务尚未配置，请联系管理员。'})
+        yield _sse_done()
+        return
+
+    payload = {
+        'inputs': {},
+        'query': question,
+        'response_mode': 'streaming',
+        'conversation_id': '',
+        'user': str(user_id),
+    }
+
+    # 缓冲区：检测 ```chart 块边界
+    buffer = ''
+    in_chart = False
+    chart_buf = ''
+
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json',
+    }
+    try:
+        resp = requests.post(
+            f'{base_url}/chat-messages',
+            json=payload,
+            headers=headers,
+            timeout=120,
+            stream=True,
+        )
+    except Exception as e:
+        yield _sse_data({'content': f'连接 AI 服务失败：{str(e)}'})
+        yield _sse_done()
+        return
+
+    if resp.status_code != 200:
+        try:
+            err_msg = resp.json().get('message', resp.text)
+        except Exception:
+            err_msg = resp.text
+        yield _sse_data({'content': f'AI服务返回错误({resp.status_code})：{err_msg}'})
+        yield _sse_done()
+        return
+
+    for line in resp.iter_lines(decode_unicode=True):
+        if not line or not line.startswith('data:'):
+            continue
+        data_str = line[5:].strip()
+        if not data_str:
+            continue
+        try:
+            event = json.loads(data_str)
+        except json.JSONDecodeError:
+            continue
+
+        event_type = event.get('event', '')
+        if event_type not in ('message', 'agent_message'):
+            continue
+
+        chunk = event.get('answer', '')
+        if not chunk:
+            continue
+
+        # 将新块追加到 buffer，逐字符扫描检测 ```chart 块
+        buffer += chunk
+
+        # 处理 buffer：提取普通文本和 chart 块
+        while buffer:
+            if not in_chart:
+                # 寻找 ```chart 开始标记
+                idx = buffer.find('```chart')
+                if idx == -1:
+                    # 没有 chart 块，但可能 buffer 末尾是 ``` 的前缀，暂留
+                    safe_len = max(0, len(buffer) - 8)
+                    if safe_len > 0:
+                        out = buffer[:safe_len]
+                        buffer = buffer[safe_len:]
+                        yield _sse_data({'content': out})
+                    break
+                else:
+                    # 输出 ```chart 之前的普通文本
+                    if idx > 0:
+                        yield _sse_data({'content': buffer[:idx]})
+                    buffer = buffer[idx + 8:]  # 跳过 ```chart
+                    in_chart = True
+                    chart_buf = ''
+            else:
+                # 在 chart 块内，寻找结束标记 ```
+                end_idx = buffer.find('```')
+                if end_idx == -1:
+                    # 结束标记未到，继续积累
+                    chart_buf += buffer
+                    buffer = ''
+                    break
+                else:
+                    chart_buf += buffer[:end_idx]
+                    buffer = buffer[end_idx + 3:]
+                    in_chart = False
+                    # 解析并发送 chart 事件
+                    chart_json = chart_buf.strip()
+                    try:
+                        chart_obj = json.loads(chart_json)
+                        yield _sse_data({'type': 'chart', 'data': chart_obj})
+                    except json.JSONDecodeError:
+                        # 解析失败则作为普通文本输出
+                        yield _sse_data({'content': f'```chart\n{chart_json}\n```'})
+                    chart_buf = ''
+
+    # 流结束后，输出 buffer 中剩余的文本
+    if buffer:
+        if in_chart:
+            # chart 块未正常关闭，作为普通文本输出
+            yield _sse_data({'content': f'```chart\n{chart_buf}{buffer}'})
+        else:
+            yield _sse_data({'content': buffer})
+
+    yield _sse_done()
+
 
 # ========== 内部工具函数 ==========
 

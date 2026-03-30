@@ -114,3 +114,39 @@ def certificate_text_stream():
         content_type='text/event-stream',
         headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
     )
+
+
+@ai_bp.route('/nl-query/stream', methods=['POST'])
+@jwt_required()
+def nl_query_stream():
+    """自然语言数据查询（流式：查DB→Dify分析→流式返回分析文本+图表数据）"""
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    data = request.get_json()
+    if not data or not data.get('question', '').strip():
+        return error('请输入查询问题')
+
+    question = data['question'].strip()
+    log_operation(user_id, 'ai_nl_query', detail=f'查询：{question[:100]}')
+
+    generator = ai_service.nl_query_stream(question, user_id, user.role)
+    return Response(
+        stream_with_context(generator),
+        content_type='text/event-stream',
+        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
+    )
+
+
+@ai_bp.route('/recommend', methods=['GET'])
+@jwt_required()
+def recommend():
+    """项目智能推荐（仅学生）"""
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    if user.role != 'student':
+        return error('推荐功能仅面向学生', 403)
+
+    log_operation(user_id, 'ai_recommend', detail='获取项目推荐')
+
+    result = recommend_service.get_recommendations_with_ai(user_id)
+    return success(data=result)
