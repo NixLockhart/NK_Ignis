@@ -40,3 +40,6 @@ CLAUDE.md
 # 测试数据脚本
 seed_data.py
 seed_extra.py
+
+# 文档目录
+docs/
