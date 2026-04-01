@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
+import AiFloatWidget from '@/components/AiFloatWidget.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,13 +23,18 @@ const menuItems = computed(() => {
   const parentRoute = router.getRoutes().find((r) => r.path === '/')
   if (!parentRoute?.children) return []
   return parentRoute.children.filter((child) => {
-    // 隐藏详情页等不需要在菜单中展示的路由
     if (child.meta?.hidden) return false
     const roles = child.meta?.roles as string[] | undefined
     if (!roles) return true
     return roles.includes(userStore.role)
   })
 })
+
+// 菜单标题：学生的"控制台"显示为"首页"
+function menuTitle(item: any): string {
+  if (item.path === 'dashboard' && userStore.role === 'student') return '首页'
+  return (item.meta?.title as string) || ''
+}
 
 function handleLogout() {
   userStore.logout()
@@ -57,7 +63,7 @@ function handleLogout() {
           <el-icon>
             <component :is="item.meta?.icon" />
           </el-icon>
-          <span>{{ item.meta?.title }}</span>
+          <span>{{ menuTitle(item) }}</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -79,5 +85,8 @@ function handleLogout() {
         <router-view />
       </el-main>
     </el-container>
+
+    <!-- AI 悬浮窗 -->
+    <AiFloatWidget />
   </el-container>
 </template>

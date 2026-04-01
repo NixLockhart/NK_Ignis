@@ -106,12 +106,6 @@ const router = createRouter({
           component: () => import('@/views/statistics/StatisticsView.vue'),
           meta: { title: '统计报表', icon: 'DataAnalysis', roles: ['admin'] },
         },
-        {
-          path: 'ai',
-          name: 'AiService',
-          component: () => import('@/views/ai/AiServiceView.vue'),
-          meta: { title: 'AI服务', icon: 'ChatDotRound', roles: ['student', 'leader', 'admin'] },
-        },
       ],
     },
     // 404 兜底
