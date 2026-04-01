@@ -186,7 +186,7 @@ onMounted(fetchDetail)
         <div class="whitespace-pre-wrap text-gray-600">{{ project.notice }}</div>
       </el-card>
 
-      <el-alert v-if="project.reviewRemark" :title="'审核意见：' + project.reviewRemark" type="info" show-icon :closable="false" class="mb-4" />
+      <el-alert v-if="project.reviewRemark && userStore.role !== 'student'" :title="'审核意见：' + project.reviewRemark" type="info" show-icon :closable="false" class="mb-4" />
 
       <!-- 学生操作区 -->
       <div v-if="userStore.role === 'student'" class="mt-6">

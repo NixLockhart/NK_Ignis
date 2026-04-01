@@ -340,8 +340,8 @@ function formatTime(time: string | null) {
         </div>
       </el-tab-pane>
 
-      <!-- Tab 3: 智能数据查询（生成式UI） -->
-      <el-tab-pane label="智能数据查询">
+      <!-- Tab 3: 智能数据查询（仅管理员可见） -->
+      <el-tab-pane v-if="userStore.role === 'admin'" label="智能数据查询">
         <div class="max-w-[900px]">
           <p class="text-sm text-gray-500 mb-4">用自然语言提问，AI 将查询数据库并自动生成可视化图表。</p>
 

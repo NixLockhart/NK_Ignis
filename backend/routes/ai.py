@@ -122,6 +122,8 @@ def nl_query_stream():
     """自然语言数据查询（流式：查DB→Dify分析→流式返回分析文本+图表数据）"""
     user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
+    if user.role != 'admin':
+        return error('数据查询功能仅限管理员使用', 403)
     data = request.get_json()
     if not data or not data.get('question', '').strip():
         return error('请输入查询问题')
