@@ -6,6 +6,7 @@ import { getTotalHoursApi, getHoursDetailApi, type HoursDetail } from '@/api/che
 import { getMyEvaluationsApi, type EvaluationInfo } from '@/api/evaluation'
 import { getMyCertificateListApi, type CertificateItem } from '@/api/certificate'
 import { updateProfileApi } from '@/api/auth'
+import { getCollegeListApi, type CollegeItem } from '@/api/college'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -45,6 +46,7 @@ function goCertificate(projectId: number) {
 
 // 编辑个人信息
 const editDialogVisible = ref(false)
+const collegeList = ref<CollegeItem[]>([])
 const editForm = reactive({
   realName: '',
   college: '',
@@ -78,7 +80,10 @@ async function handleSaveProfile() {
   }
 }
 
-onMounted(fetchData)
+onMounted(() => {
+  fetchData()
+  getCollegeListApi().then(res => { collegeList.value = res.data }).catch(() => {})
+})
 </script>
 
 <template>
@@ -187,7 +192,9 @@ onMounted(fetchData)
           <el-input v-model="editForm.realName" />
         </el-form-item>
         <el-form-item label="学院">
-          <el-input v-model="editForm.college" />
+          <el-select v-model="editForm.college" placeholder="选择学院" filterable>
+            <el-option v-for="c in collegeList" :key="c.id" :label="c.name" :value="c.name" />
+          </el-select>
         </el-form-item>
         <el-form-item label="专业">
           <el-input v-model="editForm.major" />

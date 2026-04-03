@@ -1,6 +1,7 @@
 import re
 from models import db
 from models.user import User
+from models.college import College
 
 
 def register_user(username, password, real_name, student_id, college, major, phone):
@@ -21,10 +22,14 @@ def register_user(username, password, real_name, student_id, college, major, pho
     if User.query.filter_by(student_id=student_id).first():
         raise ValueError('该学号已注册')
 
+    # 查找学院
+    college_obj = College.query.filter_by(name=college).first()
+
     user = User(
         username=username,
         real_name=real_name,
         student_id=student_id,
+        college_id=college_obj.id if college_obj else None,
         college=college,
         major=major,
         phone=phone,
@@ -53,7 +58,10 @@ def update_profile(user_id, data):
     if 'realName' in data and data['realName'].strip():
         user.real_name = data['realName'].strip()
     if 'college' in data and data['college'].strip():
-        user.college = data['college'].strip()
+        college_name = data['college'].strip()
+        college_obj = College.query.filter_by(name=college_name).first()
+        user.college_id = college_obj.id if college_obj else None
+        user.college = college_name
     if 'major' in data and data['major'].strip():
         user.major = data['major'].strip()
     if 'phone' in data and data['phone'].strip():

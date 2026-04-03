@@ -37,6 +37,7 @@ def create_app():
         from models.application import Application  # noqa: F841
         from models.checkin import Checkin  # noqa: F841
         from models.evaluation import Evaluation  # noqa: F841
+        from models.college import College  # noqa: F841
 
         db.create_all()
         _seed_admin(User)

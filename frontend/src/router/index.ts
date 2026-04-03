@@ -101,6 +101,12 @@ const router = createRouter({
           meta: { title: '用户管理', icon: 'UserFilled', roles: ['admin'] },
         },
         {
+          path: 'college-manage',
+          name: 'CollegeManage',
+          component: () => import('@/views/admin/CollegeManage.vue'),
+          meta: { title: '学院管理', icon: 'School', roles: ['admin'] },
+        },
+        {
           path: 'statistics',
           name: 'Statistics',
           component: () => import('@/views/statistics/StatisticsView.vue'),

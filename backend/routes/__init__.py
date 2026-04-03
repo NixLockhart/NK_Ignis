@@ -10,6 +10,7 @@ def register_blueprints(app):
     from routes.log import log_bp
     from routes.certificate import certificate_bp
     from routes.ai import ai_bp
+    from routes.college import college_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(project_bp)
     app.register_blueprint(application_bp)
@@ -20,3 +21,4 @@ def register_blueprints(app):
     app.register_blueprint(log_bp)
     app.register_blueprint(certificate_bp)
     app.register_blueprint(ai_bp)
+    app.register_blueprint(college_bp)
