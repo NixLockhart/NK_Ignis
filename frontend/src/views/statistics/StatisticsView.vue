@@ -176,54 +176,74 @@ onMounted(fetchData)
 
     <!-- 总览卡片 -->
     <el-row :gutter="16" class="mb-6">
-      <el-col :span="6">
-        <el-card shadow="hover">
-          <div class="text-center">
-            <div class="text-sm text-gray-500">项目总数</div>
-            <div class="text-3xl font-bold text-blue-500 mt-1">{{ overview.projectCount }}</div>
+      <el-col :xs="12" :sm="12" :lg="6" class="mb-4 lg:mb-0">
+        <div class="bg-white rounded-xl p-5 card-hover border border-gray-100">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-50 text-blue-500 flex-shrink-0">
+              <el-icon size="24"><Tickets /></el-icon>
+            </div>
+            <div>
+              <div class="text-xs text-gray-400">项目总数</div>
+              <div class="text-2xl font-bold text-gray-800" style="font-variant-numeric: tabular-nums;">{{ overview.projectCount }}</div>
+            </div>
           </div>
-        </el-card>
+        </div>
       </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover">
-          <div class="text-center">
-            <div class="text-sm text-gray-500">志愿者人数</div>
-            <div class="text-3xl font-bold text-green-500 mt-1">{{ overview.volunteerCount }}</div>
+      <el-col :xs="12" :sm="12" :lg="6" class="mb-4 lg:mb-0">
+        <div class="bg-white rounded-xl p-5 card-hover border border-gray-100">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-green-50 text-green-500 flex-shrink-0">
+              <el-icon size="24"><User /></el-icon>
+            </div>
+            <div>
+              <div class="text-xs text-gray-400">志愿者人数</div>
+              <div class="text-2xl font-bold text-gray-800" style="font-variant-numeric: tabular-nums;">{{ overview.volunteerCount }}</div>
+            </div>
           </div>
-        </el-card>
+        </div>
       </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover">
-          <div class="text-center">
-            <div class="text-sm text-gray-500">累计服务时长</div>
-            <div class="text-3xl font-bold text-orange-500 mt-1">{{ overview.totalHours }}h</div>
+      <el-col :xs="12" :sm="12" :lg="6" class="mb-4 lg:mb-0">
+        <div class="bg-white rounded-xl p-5 card-hover border border-gray-100">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-orange-50 text-orange-500 flex-shrink-0">
+              <el-icon size="24"><Clock /></el-icon>
+            </div>
+            <div>
+              <div class="text-xs text-gray-400">累计服务时长</div>
+              <div class="text-2xl font-bold text-gray-800" style="font-variant-numeric: tabular-nums;">{{ overview.totalHours }}h</div>
+            </div>
           </div>
-        </el-card>
+        </div>
       </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover">
-          <div class="text-center">
-            <div class="text-sm text-gray-500">报名总数</div>
-            <div class="text-3xl font-bold text-purple-500 mt-1">{{ overview.applicationCount }}</div>
+      <el-col :xs="12" :sm="12" :lg="6" class="mb-4 lg:mb-0">
+        <div class="bg-white rounded-xl p-5 card-hover border border-gray-100">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center bg-purple-50 text-purple-500 flex-shrink-0">
+              <el-icon size="24"><DataAnalysis /></el-icon>
+            </div>
+            <div>
+              <div class="text-xs text-gray-400">报名总数</div>
+              <div class="text-2xl font-bold text-gray-800" style="font-variant-numeric: tabular-nums;">{{ overview.applicationCount }}</div>
+            </div>
           </div>
-        </el-card>
+        </div>
       </el-col>
     </el-row>
 
     <!-- 图表区域 -->
     <el-row :gutter="16" class="mb-6">
-      <el-col :span="12">
+      <el-col :xs="24" :md="12" class="mb-4 md:mb-0">
         <el-card shadow="never"><v-chart :option="categoryOption" style="height: 350px" autoresize /></el-card>
       </el-col>
-      <el-col :span="12">
+      <el-col :xs="24" :md="12">
         <el-card shadow="never"><v-chart :option="collegeOption" style="height: 350px" autoresize /></el-card>
       </el-col>
     </el-row>
     <el-row :gutter="16" class="mb-6">
-      <el-col :span="12">
+      <el-col :xs="24" :md="12" class="mb-4 md:mb-0">
         <el-card shadow="never"><v-chart :option="monthlyOption" style="height: 350px" autoresize /></el-card>
       </el-col>
-      <el-col :span="12">
+      <el-col :xs="24" :md="12">
         <el-card shadow="never"><v-chart :option="applicationOption" style="height: 350px" autoresize /></el-card>
       </el-col>
     </el-row>

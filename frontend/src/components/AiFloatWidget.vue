@@ -83,7 +83,7 @@ function formatTime(t: string | null) { return t ? t.replace('T', ' ').slice(0, 
   <!-- 悬浮按钮 -->
   <div
     v-if="!open"
-    class="fixed bottom-6 right-6 z-[1000] w-14 h-14 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110"
+    class="fixed bottom-6 right-6 z-[1000] w-14 h-14 rounded-full bg-gradient-to-br from-[#4F6EF7] to-[#6C8CFA] hover:from-[#3F58C6] hover:to-[#5A7AF0] text-white flex items-center justify-center cursor-pointer shadow-lg transition-all hover:scale-110"
     @click="open = true"
   >
     <el-icon size="28"><ChatDotRound /></el-icon>
@@ -91,9 +91,9 @@ function formatTime(t: string | null) { return t ? t.replace('T', ' ').slice(0, 
 
   <!-- 悬浮面板 -->
   <transition name="ai-panel">
-    <div v-if="open" class="fixed bottom-6 right-6 z-[1000] w-[420px] h-[580px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden">
+    <div v-if="open" class="fixed z-[1000] bg-white flex flex-col overflow-hidden ai-float-panel">
       <!-- 头部 -->
-      <div class="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white flex-shrink-0">
+      <div class="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#4F6EF7] to-[#6C8CFA] text-white flex-shrink-0">
         <div class="flex items-center gap-2">
           <el-icon size="20"><ChatDotRound /></el-icon>
           <span class="font-semibold text-sm">AI 智能助手</span>
@@ -197,6 +197,25 @@ function formatTime(t: string | null) { return t ? t.replace('T', ' ').slice(0, 
 .ai-panel-enter-from, .ai-panel-leave-to {
   opacity: 0;
   transform: translateY(20px) scale(0.95);
+}
+/* 桌面端面板 */
+.ai-float-panel {
+  bottom: 24px;
+  right: 24px;
+  width: 420px;
+  height: 580px;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  border: 1px solid #e5e7eb;
+}
+/* 移动端面板全屏 */
+@media (max-width: 640px) {
+  .ai-float-panel {
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%; height: 100%;
+    border-radius: 0;
+    border: none;
+  }
 }
 .ai-float-tabs :deep(.el-tabs__header) {
   margin: 0;

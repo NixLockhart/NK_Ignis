@@ -1,14 +1,96 @@
 @import "tailwindcss";
 
-/* 全局基础样式 */
+/* ========== 全局设计规范 ========== */
+:root {
+  /* 主题色 */
+  --el-color-primary: #4F6EF7;
+  --el-color-primary-light-3: #7B93FA;
+  --el-color-primary-light-5: #A7B7FC;
+  --el-color-primary-light-7: #D3DBFD;
+  --el-color-primary-light-9: #EEF1FE;
+  --el-color-primary-dark-2: #3F58C6;
+  --el-color-success: #36CFC9;
+  --el-color-success-light-3: #6EDCD8;
+  --el-color-success-light-5: #9AE9E4;
+  --el-color-success-light-9: #E6FAF9;
+  --el-color-warning: #F5A623;
+  --el-color-warning-light-3: #F8BE5E;
+  --el-color-warning-light-5: #FAD28E;
+  --el-color-warning-light-9: #FEF5E7;
+
+  /* 圆角 */
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+  --el-border-radius-round: 20px;
+
+  /* 字体 */
+  --el-font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+}
+
+/* ========== 基础重置 ========== */
 html, body, #app {
   margin: 0;
   padding: 0;
   height: 100%;
-  font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+  font-family: var(--el-font-family);
+  background: #F7F8FC;
 }
 
-/* Markdown 渲染样式 */
+/* ========== Element Plus 全局覆盖 ========== */
+.el-card {
+  border-radius: 12px !important;
+  border-color: #E5E7EB !important;
+}
+.el-card:not(.is-always-shadow):not(.is-never-shadow):hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06) !important;
+}
+.el-button--primary {
+  background: linear-gradient(135deg, #4F6EF7, #6C8CFA) !important;
+  border: none !important;
+  color: #fff !important;
+}
+.el-button--primary:hover {
+  background: linear-gradient(135deg, #3F58C6, #5A7AF0) !important;
+  color: #fff !important;
+}
+.el-button--primary.is-text, .el-button--primary.is-link {
+  background: transparent !important;
+  color: #4F6EF7 !important;
+}
+.el-button--primary.is-text:hover, .el-button--primary.is-link:hover {
+  background: #EEF1FE !important;
+  color: #3F58C6 !important;
+}
+.el-tag {
+  border-radius: 6px !important;
+}
+.el-input__wrapper, .el-textarea__inner {
+  border-radius: 8px !important;
+}
+
+/* ========== 页面切换动画 ========== */
+.fade-up-enter-active, .fade-up-leave-active {
+  transition: all 0.25s ease;
+}
+.fade-up-enter-from {
+  opacity: 0;
+  transform: translateY(12px);
+}
+.fade-up-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* ========== 卡片悬浮交互 ========== */
+.card-hover {
+  transition: all 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* ========== Markdown 渲染样式 ========== */
 .markdown-body h1, .markdown-body h2, .markdown-body h3 {
   margin: 0.6em 0 0.3em;
   font-weight: 600;
@@ -19,7 +101,7 @@ html, body, #app {
 .markdown-body li { margin: 0.15em 0; }
 .markdown-body strong { font-weight: 600; }
 .markdown-body blockquote {
-  border-left: 3px solid #409eff;
+  border-left: 3px solid #4F6EF7;
   padding-left: 0.8em;
   margin: 0.5em 0;
   color: #606266;
@@ -35,6 +117,18 @@ html, body, #app {
 .markdown-body code {
   background: #f5f7fa;
   padding: 0.15em 0.4em;
-  border-radius: 3px;
+  border-radius: 4px;
   font-size: 0.9em;
+}
+
+/* ========== 骨架屏/加载 ========== */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-box {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
 }
