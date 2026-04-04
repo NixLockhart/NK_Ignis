@@ -142,6 +142,29 @@ def reject():
         return error(str(e))
 
 
+@project_bp.route('/batch-approve', methods=['POST'])
+@jwt_required()
+def batch_approve():
+    """批量审核通过"""
+    user = _get_current_user()
+    if user.role != 'admin':
+        return error('仅管理员可操作', 403)
+    data = request.get_json()
+    ids = data.get('ids', []) if data else []
+    remark = data.get('remark', '')
+    if not ids:
+        return error('请选择项目')
+    ok, fail = 0, 0
+    for pid in ids:
+        try:
+            project_service.approve_project(pid, remark)
+            ok += 1
+        except Exception:
+            fail += 1
+    log_operation(user.id, 'approve_project', detail=f'批量审核通过{ok}个项目')
+    return success(message=f'成功通过{ok}个，失败{fail}个')
+
+
 @project_bp.route('/list', methods=['GET'])
 @jwt_required()
 def project_list():

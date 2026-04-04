@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { getProjectListApi, approveProjectApi, rejectProjectApi, type ProjectInfo } from '@/api/project'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getProjectListApi, approveProjectApi, rejectProjectApi, batchApproveProjectApi, type ProjectInfo } from '@/api/project'
 
 const router = useRouter()
 const loading = ref(false)
@@ -10,6 +10,7 @@ const projectList = ref<ProjectInfo[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
+const selectedRows = ref<ProjectInfo[]>([])
 
 // 审核弹窗
 const reviewVisible = ref(false)
@@ -64,6 +65,15 @@ async function handleReject() {
   }
 }
 
+async function handleBatchApprove() {
+  const ids = selectedRows.value.map(r => r.id)
+  if (!ids.length) { ElMessage.warning('请选择项目'); return }
+  await ElMessageBox.confirm(`确定批量通过 ${ids.length} 个项目？`, '批量审核通过')
+  await batchApproveProjectApi(ids)
+  ElMessage.success(`已批量通过 ${ids.length} 个`)
+  fetchList()
+}
+
 function goDetail(id: number) {
   router.push(`/project/${id}`)
 }
@@ -80,7 +90,14 @@ onMounted(fetchList)
   <div>
     <h2 class="text-xl font-bold text-gray-800 mb-4">项目审核</h2>
 
-    <el-table :data="projectList" v-loading="loading" stripe>
+    <!-- 批量操作 -->
+    <div v-if="selectedRows.length > 0" class="mb-3 flex items-center gap-3">
+      <span class="text-sm text-gray-500">已选 {{ selectedRows.length }} 个项目</span>
+      <el-button type="primary" size="small" @click="handleBatchApprove">批量通过</el-button>
+    </div>
+
+    <el-table :data="projectList" v-loading="loading" stripe @selection-change="(rows: ProjectInfo[]) => selectedRows = rows">
+      <el-table-column type="selection" width="45" />
       <el-table-column prop="title" label="项目名称" min-width="180">
         <template #default="{ row }">
           <el-link type="primary" @click="goDetail(row.id)">{{ row.title }}</el-link>

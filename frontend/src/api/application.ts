@@ -36,6 +36,14 @@ export function rejectApplicationApi(id: number, remark: string) {
   return request.post('/application/reject', { id, remark })
 }
 
+export function batchApproveApplicationApi(ids: number[]) {
+  return request.post('/application/batch-approve', { ids })
+}
+
+export function batchRejectApplicationApi(ids: number[], remark: string) {
+  return request.post('/application/batch-reject', { ids, remark })
+}
+
 // 某项目的报名列表
 export function getApplicationListApi(params: { projectId: number; status?: string; page?: number; pageSize?: number }) {
   return request.get('/application/list', { params })

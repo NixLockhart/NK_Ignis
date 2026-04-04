@@ -47,6 +47,14 @@ export function rejectCheckinApi(id: number, remark: string) {
   return request.post('/checkin/reject', { id, remark })
 }
 
+export function batchConfirmCheckinApi(ids: number[]) {
+  return request.post('/checkin/batch-confirm', { ids })
+}
+
+export function batchRejectCheckinApi(ids: number[], remark: string) {
+  return request.post('/checkin/batch-reject', { ids, remark })
+}
+
 // 某项目打卡列表
 export function getCheckinListApi(params: { projectId: number; status?: string; page?: number; pageSize?: number }) {
   return request.get('/checkin/list', { params })

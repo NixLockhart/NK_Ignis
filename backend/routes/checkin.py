@@ -101,6 +101,51 @@ def reject():
         return error(str(e))
 
 
+@checkin_bp.route('/batch-confirm', methods=['POST'])
+@jwt_required()
+def batch_confirm():
+    """批量确认打卡"""
+    user = _get_current_user()
+    if user.role not in ('leader', 'admin'):
+        return error('无权限', 403)
+    data = request.get_json()
+    ids = data.get('ids', []) if data else []
+    if not ids:
+        return error('请选择打卡记录')
+    ok, fail = 0, 0
+    for cid in ids:
+        try:
+            checkin_service.confirm_checkin(cid, user.id)
+            ok += 1
+        except Exception:
+            fail += 1
+    log_operation(user.id, 'confirm_checkin', detail=f'批量确认{ok}条打卡')
+    return success(message=f'成功确认{ok}条，失败{fail}条')
+
+
+@checkin_bp.route('/batch-reject', methods=['POST'])
+@jwt_required()
+def batch_reject():
+    """批量驳回打卡"""
+    user = _get_current_user()
+    if user.role not in ('leader', 'admin'):
+        return error('无权限', 403)
+    data = request.get_json()
+    ids = data.get('ids', []) if data else []
+    remark = data.get('remark', '批量驳回')
+    if not ids:
+        return error('请选择打卡记录')
+    ok, fail = 0, 0
+    for cid in ids:
+        try:
+            checkin_service.reject_checkin(cid, user.id, remark)
+            ok += 1
+        except Exception:
+            fail += 1
+    log_operation(user.id, 'reject_checkin', detail=f'批量驳回{ok}条打卡')
+    return success(message=f'成功驳回{ok}条，失败{fail}条')
+
+
 @checkin_bp.route('/list', methods=['GET'])
 @jwt_required()
 def checkin_list():

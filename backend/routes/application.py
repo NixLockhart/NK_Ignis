@@ -104,6 +104,51 @@ def reject():
         return error(str(e))
 
 
+@application_bp.route('/batch-approve', methods=['POST'])
+@jwt_required()
+def batch_approve():
+    """批量通过报名"""
+    user = _get_current_user()
+    if user.role not in ('leader', 'admin'):
+        return error('无权限', 403)
+    data = request.get_json()
+    ids = data.get('ids', []) if data else []
+    if not ids:
+        return error('请选择报名记录')
+    ok, fail = 0, 0
+    for aid in ids:
+        try:
+            application_service.approve_application(aid, user.id)
+            ok += 1
+        except Exception:
+            fail += 1
+    log_operation(user.id, 'approve_application', detail=f'批量通过{ok}条报名')
+    return success(message=f'成功通过{ok}条，失败{fail}条')
+
+
+@application_bp.route('/batch-reject', methods=['POST'])
+@jwt_required()
+def batch_reject():
+    """批量拒绝报名"""
+    user = _get_current_user()
+    if user.role not in ('leader', 'admin'):
+        return error('无权限', 403)
+    data = request.get_json()
+    ids = data.get('ids', []) if data else []
+    remark = data.get('remark', '批量拒绝')
+    if not ids:
+        return error('请选择报名记录')
+    ok, fail = 0, 0
+    for aid in ids:
+        try:
+            application_service.reject_application(aid, user.id, remark)
+            ok += 1
+        except Exception:
+            fail += 1
+    log_operation(user.id, 'reject_application', detail=f'批量拒绝{ok}条报名')
+    return success(message=f'成功拒绝{ok}条，失败{fail}条')
+
+
 @application_bp.route('/list', methods=['GET'])
 @jwt_required()
 def application_list():

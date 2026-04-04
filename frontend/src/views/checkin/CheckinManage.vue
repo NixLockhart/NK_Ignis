@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMyProjectsApi, type ProjectInfo } from '@/api/project'
-import { getCheckinListApi, confirmCheckinApi, rejectCheckinApi, type CheckinInfo } from '@/api/checkin'
+import { getCheckinListApi, confirmCheckinApi, rejectCheckinApi, batchConfirmCheckinApi, batchRejectCheckinApi, type CheckinInfo } from '@/api/checkin'
 
 const loading = ref(false)
 const myProjects = ref<ProjectInfo[]>([])
 const selectedProjectId = ref<number | null>(null)
+const selectedRows = ref<CheckinInfo[]>([])
 
 const list = ref<CheckinInfo[]>([])
 const total = ref(0)
@@ -67,6 +68,26 @@ async function handleReject(row: CheckinInfo) {
   fetchCheckins()
 }
 
+const pendingSelected = computed(() => selectedRows.value.filter(r => r.status === 'pending' && r.signOutTime))
+
+async function handleBatchConfirm() {
+  const ids = pendingSelected.value.map(r => r.id)
+  if (!ids.length) { ElMessage.warning('请选择待确认的打卡记录'); return }
+  await ElMessageBox.confirm(`确定批量确认 ${ids.length} 条打卡？`, '批量确认')
+  await batchConfirmCheckinApi(ids)
+  ElMessage.success(`已批量确认 ${ids.length} 条`)
+  fetchCheckins()
+}
+
+async function handleBatchReject() {
+  const ids = pendingSelected.value.map(r => r.id)
+  if (!ids.length) { ElMessage.warning('请选择待确认的打卡记录'); return }
+  const { value } = await ElMessageBox.prompt('请填写批量驳回原因', '批量驳回', { inputType: 'textarea' })
+  await batchRejectCheckinApi(ids, value || '批量驳回')
+  ElMessage.success(`已批量驳回 ${ids.length} 条`)
+  fetchCheckins()
+}
+
 function formatTime(time: string | null) {
   if (!time) return '--'
   return time.replace('T', ' ').slice(0, 16)
@@ -90,7 +111,15 @@ onMounted(fetchMyProjects)
       </el-select>
     </div>
 
-    <el-table :data="list" v-loading="loading" stripe :row-class-name="({ row }: { row: CheckinInfo }) => row.isAbnormal ? 'bg-red-50' : ''">
+    <!-- 批量操作 -->
+    <div v-if="pendingSelected.length > 0" class="mb-3 flex items-center gap-3">
+      <span class="text-sm text-gray-500">已选 {{ pendingSelected.length }} 条可操作记录</span>
+      <el-button type="primary" size="small" @click="handleBatchConfirm">批量确认</el-button>
+      <el-button type="danger" size="small" @click="handleBatchReject">批量驳回</el-button>
+    </div>
+
+    <el-table :data="list" v-loading="loading" stripe :row-class-name="({ row }: { row: CheckinInfo }) => row.isAbnormal ? 'bg-red-50' : ''" @selection-change="(rows: CheckinInfo[]) => selectedRows = rows">
+      <el-table-column type="selection" width="45" />
       <el-table-column prop="userName" label="姓名" width="100" />
       <el-table-column prop="userStudentId" label="学号" width="120" />
       <el-table-column label="签到时间" width="170">

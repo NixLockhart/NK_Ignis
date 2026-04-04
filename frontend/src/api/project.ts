@@ -72,6 +72,10 @@ export function rejectProjectApi(id: number, remark: string) {
   return request.post('/project/reject', { id, remark })
 }
 
+export function batchApproveProjectApi(ids: number[], remark?: string) {
+  return request.post('/project/batch-approve', { ids, remark })
+}
+
 // 项目列表
 export function getProjectListApi(params: { status?: string; category?: string; page?: number; pageSize?: number }) {
   return request.get('/project/list', { params })
