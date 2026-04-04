@@ -1,4 +1,5 @@
 import json
+import random
 from sqlalchemy import func
 from flask import current_app
 from models import db
@@ -42,17 +43,16 @@ def get_recommendations(user_id):
     if not candidates:
         return []
 
-    # 3. 打分排序
+    # 3. 打分排序（加入随机因子，每次刷新结果不同）
     scored = []
     for p in candidates:
         score = 0
-        # 同类型项目优先
         if p.category in preferred_categories:
             idx = preferred_categories.index(p.category)
             score += max(10 - idx * 2, 1)
-        # 同学院创建的项目加权
         if p.creator and p.creator.college == user.college:
             score += 3
+        score += random.uniform(0, 4)  # 随机扰动
         scored.append((p, score))
 
     scored.sort(key=lambda x: x[1], reverse=True)
