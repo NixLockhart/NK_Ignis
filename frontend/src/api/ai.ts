@@ -104,7 +104,7 @@ export function generateCertificateTextStreamApi(
   onDone?: () => void,
   onError?: (err: string) => void,
 ) {
-  return fetchSSE('/ai/certificate-text/stream', params, onChunk, onDone, onError)
+  return fetchSSE('/ai/certificate-text/stream', { ...params }, onChunk, onDone, onError)
 }
 
 // ========== 自然语言数据查询（生成式UI） ==========

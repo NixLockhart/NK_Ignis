@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { registerApi, type RegisterParams } from '@/api/auth'
 import { getCollegeListApi, type CollegeItem } from '@/api/college'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { User, Lock, Postcard, Tickets, Phone } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const formRef = ref<FormInstance>()
