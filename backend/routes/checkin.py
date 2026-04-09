@@ -188,9 +188,12 @@ def my_checkins():
 @jwt_required()
 def total_hours():
     """累计已确认时长"""
+    user = _get_current_user()
     user_id = request.args.get('userId', type=int)
+    if user_id and user_id != user.id and user.role != 'admin':
+        return error('无权查询其他用户数据', 403)
     if not user_id:
-        user_id = int(get_jwt_identity())
+        user_id = user.id
 
     hours = checkin_service.get_user_total_hours(user_id)
     return success(data={'totalHours': hours})
@@ -200,9 +203,12 @@ def total_hours():
 @jwt_required()
 def hours_detail():
     """各项目时长明细"""
+    user = _get_current_user()
     user_id = request.args.get('userId', type=int)
+    if user_id and user_id != user.id and user.role != 'admin':
+        return error('无权查询其他用户数据', 403)
     if not user_id:
-        user_id = int(get_jwt_identity())
+        user_id = user.id
 
     data = checkin_service.get_user_hours_detail(user_id)
     return success(data=data)
