@@ -76,6 +76,10 @@ def delete_college(college_id):
     if not c:
         return error('学院不存在', 404)
 
+    ref_count = User.query.filter_by(college_id=college_id).count()
+    if ref_count > 0:
+        return error(f'仍有 {ref_count} 名用户使用该学院，请先迁移后再删除', 400)
+
     db.session.delete(c)
     db.session.commit()
     return success(message='删除成功')
