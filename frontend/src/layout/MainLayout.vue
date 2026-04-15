@@ -44,6 +44,11 @@ function menuTitle(item: any): string {
   return (item.meta?.title as string) || ''
 }
 
+const topBarTitle = computed(() => {
+  if (route.path === '/dashboard' && userStore.role === 'student') return '首页'
+  return (route.meta?.title as string) || ''
+})
+
 function handleLogout() {
   userStore.logout()
   ElMessage.success('已退出登录')
@@ -120,7 +125,7 @@ function handleLogout() {
           <div v-if="isMobile" class="cursor-pointer p-1" @click="drawerVisible = true">
             <el-icon size="22"><Fold /></el-icon>
           </div>
-          <span class="text-base font-semibold text-gray-800">{{ route.meta?.title || '' }}</span>
+          <span class="text-base font-semibold text-gray-800">{{ topBarTitle }}</span>
         </div>
         <div class="flex items-center gap-3">
           <el-tag :type="userStore.role === 'admin' ? 'danger' : userStore.role === 'leader' ? 'warning' : 'primary'" size="small" round>
