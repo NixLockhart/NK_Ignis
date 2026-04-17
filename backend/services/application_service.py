@@ -6,36 +6,40 @@ from models.project import Project
 
 def apply_project(user_id, project_id, reason=None):
     """学生报名项目"""
-    project = Project.query.get(project_id)
-    if not project or project.is_deleted:
-        raise ValueError('项目不存在')
-    if project.status != 'published':
-        raise ValueError('该项目当前不可报名')
+    try:
+        project = Project.query.with_for_update().get(project_id)
+        if not project or project.is_deleted:
+            raise ValueError('项目不存在')
+        if project.status != 'published':
+            raise ValueError('该项目当前不可报名')
 
-    # 报名截止时间校验
-    if project.registration_deadline and datetime.now() > project.registration_deadline:
-        raise ValueError('报名已截止')
+        # 报名截止时间校验
+        if project.registration_deadline and datetime.now() > project.registration_deadline:
+            raise ValueError('报名已截止')
 
-    # 防止重复报名（排除已取消的）
-    existing = Application.query.filter_by(
-        project_id=project_id, user_id=user_id
-    ).filter(Application.status != 'cancelled').first()
-    if existing:
-        raise ValueError('您已报名该项目，请勿重复报名')
+        # 防止重复报名（排除已取消的）
+        existing = Application.query.filter_by(
+            project_id=project_id, user_id=user_id
+        ).filter(Application.status != 'cancelled').first()
+        if existing:
+            raise ValueError('您已报名该项目，请勿重复报名')
 
-    # 检查名额是否已满
-    approved_count = get_approved_count(project_id)
-    if project.max_people > 0 and approved_count >= project.max_people:
-        raise ValueError('该项目名额已满')
+        # 检查名额是否已满（持锁后再次确认）
+        approved_count = get_approved_count(project_id)
+        if project.max_people > 0 and approved_count >= project.max_people:
+            raise ValueError('该项目名额已满')
 
-    app = Application(
-        project_id=project_id,
-        user_id=user_id,
-        apply_reason=reason,
-        status='pending',
-    )
-    db.session.add(app)
-    db.session.commit()
+        app = Application(
+            project_id=project_id,
+            user_id=user_id,
+            apply_reason=reason,
+            status='pending',
+        )
+        db.session.add(app)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
     return app
 
 
@@ -53,24 +57,29 @@ def cancel_application(app_id, user_id):
 
 
 def approve_application(app_id, leader_id):
-    """通过报名（名额控制）"""
+    """通过报名（名额控制 + 行级锁防止超额）"""
     app = _get_application_or_raise(app_id)
-    project = app.project
+    try:
+        # 锁住项目行，避免并发审批共同读到旧的 approved_count
+        project = Project.query.with_for_update().get(app.project_id)
 
-    # 校验操作者是项目创建者
-    if project.creator_id != leader_id:
-        raise PermissionError('只能审核自己创建的项目的报名')
-    if app.status != 'pending':
-        raise ValueError('只有待审核状态的报名可以审批')
+        # 校验操作者是项目创建者
+        if project.creator_id != leader_id:
+            raise PermissionError('只能审核自己创建的项目的报名')
+        if app.status != 'pending':
+            raise ValueError('只有待审核状态的报名可以审批')
 
-    # 名额校验
-    approved_count = get_approved_count(app.project_id)
-    if project.max_people > 0 and approved_count >= project.max_people:
-        raise ValueError(f'名额已满（{approved_count}/{project.max_people}），无法继续通过')
+        # 名额校验（持锁后再次确认）
+        approved_count = get_approved_count(app.project_id)
+        if project.max_people > 0 and approved_count >= project.max_people:
+            raise ValueError(f'名额已满（{approved_count}/{project.max_people}），无法继续通过')
 
-    app.status = 'approved'
-    app.review_time = datetime.now()
-    db.session.commit()
+        app.status = 'approved'
+        app.review_time = datetime.now()
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
     return app
 
 
