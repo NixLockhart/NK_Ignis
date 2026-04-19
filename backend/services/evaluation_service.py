@@ -1,7 +1,9 @@
+from datetime import datetime
 from models import db
 from models.evaluation import Evaluation
 from models.checkin import Checkin
 from models.project import Project
+from models.application import Application
 
 
 def create_evaluation(user_id, project_id, score, content=None):
@@ -9,6 +11,13 @@ def create_evaluation(user_id, project_id, score, content=None):
     project = Project.query.get(project_id)
     if not project or project.is_deleted:
         raise ValueError('项目不存在')
+
+    # 校验项目是否真正结束（状态已结束 或 结束时间已过）
+    project_finished = project.status == 'completed' or (
+        project.end_time is not None and project.end_time <= datetime.now()
+    )
+    if not project_finished:
+        raise ValueError('项目尚未结束，暂无法评价')
 
     # 校验是否已签退（参与过活动）
     checkin = Checkin.query.filter_by(
@@ -47,6 +56,16 @@ def create_leader_comment(leader_id, project_id, target_user_id, score, content=
         raise ValueError('项目不存在')
     if project.creator_id != leader_id:
         raise PermissionError('只能评价自己创建的项目的参与者')
+
+    # 校验被评价学生确属该项目参与者：必须 approved 报名 + confirmed 打卡
+    approved = Application.query.filter_by(
+        project_id=project_id, user_id=target_user_id, status='approved'
+    ).first()
+    confirmed = Checkin.query.filter_by(
+        project_id=project_id, user_id=target_user_id, status='confirmed'
+    ).first()
+    if not approved or not confirmed:
+        raise ValueError('该学生未参加或未完成本项目，无法评价')
 
     if not isinstance(score, int) or score < 1 or score > 5:
         raise ValueError('评分必须为1-5的整数')
