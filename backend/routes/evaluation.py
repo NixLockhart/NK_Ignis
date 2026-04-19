@@ -62,10 +62,24 @@ def leader_comment():
 @evaluation_bp.route('/list', methods=['GET'])
 @jwt_required()
 def evaluation_list():
-    """某项目评价列表"""
+    """某项目评价列表（仅项目创建者 / 已通过报名学生 / 管理员可见）"""
+    user = _get_current_user()
     project_id = request.args.get('projectId', type=int)
     if not project_id:
         return error('缺少项目ID')
+
+    if user.role != 'admin':
+        from models.project import Project
+        from models.application import Application
+        project = Project.query.get(project_id)
+        if not project:
+            return error('项目不存在', 404)
+        is_creator = project.creator_id == user.id
+        is_participant = Application.query.filter_by(
+            project_id=project_id, user_id=user.id, status='approved'
+        ).first() is not None
+        if not (is_creator or is_participant):
+            return error('无权查看该项目评价', 403)
 
     page = request.args.get('page', 1, type=int)
     page_size = request.args.get('pageSize', 10, type=int)
