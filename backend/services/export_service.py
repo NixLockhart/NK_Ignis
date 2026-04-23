@@ -23,7 +23,7 @@ def export_application_list(project_id):
 
     for i, a in enumerate(apps, 1):
         ws.append([
-            i, a.user.real_name, a.user.student_id, a.user.college,
+            i, a.user.real_name, a.user.student_id, a.user.college_name,
             a.user.major, a.user.phone, a.apply_reason or '',
             a.STATUS_LABELS.get(a.status, ''),
             a.apply_time.strftime('%Y-%m-%d %H:%M') if a.apply_time else '',
@@ -78,7 +78,7 @@ def export_hours_records():
 
     for i, c in enumerate(checkins, 1):
         ws.append([
-            i, c.user.real_name, c.user.student_id, c.user.college,
+            i, c.user.real_name, c.user.student_id, c.user.college_name,
             c.project.title if c.project else '',
             c.sign_in_time.strftime('%Y-%m-%d %H:%M') if c.sign_in_time else '',
             c.sign_out_time.strftime('%Y-%m-%d %H:%M') if c.sign_out_time else '',

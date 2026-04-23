@@ -40,13 +40,17 @@ def get_project_category_stats():
 
 
 def get_college_participation_stats():
-    """各学院参与人数（柱状图）"""
-    # 统计有 approved 报名的学生按学院分组
+    """各学院参与人数（柱状图） — 优先按 college_id join，旧字符串字段做 fallback"""
+    from models.college import College
+    college_label = func.coalesce(College.name, User.college).label('college_label')
     results = db.session.query(
-        User.college, func.count(func.distinct(Application.user_id))
-    ).join(Application, Application.user_id == User.id).filter(
-        Application.status == 'approved'
-    ).group_by(User.college).order_by(func.count(func.distinct(Application.user_id)).desc()).all()
+        college_label,
+        func.count(func.distinct(Application.user_id))
+    ).join(Application, Application.user_id == User.id) \
+     .outerjoin(College, College.id == User.college_id) \
+     .filter(Application.status == 'approved') \
+     .group_by(college_label) \
+     .order_by(func.count(func.distinct(Application.user_id)).desc()).all()
 
     return {
         'colleges': [r[0] for r in results],

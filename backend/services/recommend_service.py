@@ -50,7 +50,7 @@ def get_recommendations(user_id):
         if p.category in preferred_categories:
             idx = preferred_categories.index(p.category)
             score += max(10 - idx * 2, 1)
-        if p.creator and p.creator.college == user.college:
+        if p.creator and p.creator.college_name == user.college_name:
             score += 3
         score += random.uniform(0, 4)  # 随机扰动
         scored.append((p, score))
@@ -111,7 +111,7 @@ def get_recommendations_with_ai(user_id):
     payload = {
         'inputs': {
             'student_name': user.real_name,
-            'student_college': user.college,
+            'student_college': user.college_name,
             'history_categories': history_str,
             'project_list': project_summary,
         },

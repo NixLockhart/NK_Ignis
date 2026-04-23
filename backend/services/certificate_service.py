@@ -23,7 +23,7 @@ def get_certificate_data(user_id, project_id):
     return {
         'userName': user.real_name,
         'studentId': user.student_id,
-        'college': user.college,
+        'college': user.college_name,
         'major': user.major,
         'projectTitle': project.title,
         'projectCategory': project.category,
