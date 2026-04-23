@@ -37,7 +37,7 @@ class Application(db.Model):
             'userId': self.user_id,
             'userName': self.user.real_name if self.user else None,
             'userStudentId': self.user.student_id if self.user else None,
-            'userCollege': self.user.college if self.user else None,
+            'userCollege': self.user.college_name if self.user else None,
             'applyReason': self.apply_reason,
             'status': self.status,
             'statusLabel': self.STATUS_LABELS.get(self.status, '未知'),
