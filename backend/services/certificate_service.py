@@ -51,3 +51,15 @@ def get_my_certificate_list(user_id):
                 'signInTime': c.sign_in_time.isoformat() if c.sign_in_time else None,
             })
     return result
+
+
+def get_eligible_users(project_id):
+    """获取某项目可生成证书的所有学生用户ID（有已确认打卡记录）"""
+    rows = Checkin.query.filter_by(project_id=project_id, status='confirmed').all()
+    seen = set()
+    user_ids = []
+    for c in rows:
+        if c.user_id not in seen:
+            seen.add(c.user_id)
+            user_ids.append(c.user_id)
+    return user_ids
