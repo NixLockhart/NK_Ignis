@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getCertificateDataApi, type CertificateData } from '@/api/certificate'
+import {
+  getCertificateDataApi, downloadCertificatePdfApi, getCertTemplatesApi,
+  type CertificateData, type CertTemplate,
+} from '@/api/certificate'
 import { generateCertificateTextApi } from '@/api/ai'
 import { ElMessage } from 'element-plus'
 
@@ -9,7 +12,10 @@ const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const aiLoading = ref(false)
+const pdfLoading = ref(false)
 const data = ref<CertificateData | null>(null)
+const templates = ref<CertTemplate[]>([])
+const selectedTemplateId = ref<number | undefined>(undefined)
 
 // 默认表彰语模板（第7周将替换为 AI 生成）
 const commendation = ref('')
@@ -23,9 +29,15 @@ async function fetchData() {
   if (!projectId) return
   loading.value = true
   try {
-    const res = await getCertificateDataApi(projectId)
-    data.value = res.data
-    commendation.value = generateDefaultText(res.data)
+    const [certRes, tplRes] = await Promise.all([
+      getCertificateDataApi(projectId),
+      getCertTemplatesApi(true),
+    ])
+    data.value = certRes.data
+    commendation.value = generateDefaultText(certRes.data)
+    templates.value = tplRes.data
+    const def = templates.value.find((t) => t.isDefault)
+    selectedTemplateId.value = def?.id ?? templates.value[0]?.id
   } finally {
     loading.value = false
   }
@@ -33,6 +45,20 @@ async function fetchData() {
 
 function handlePrint() {
   window.print()
+}
+
+async function handleDownloadPdf() {
+  if (!data.value) return
+  const projectId = Number(route.params.projectId)
+  pdfLoading.value = true
+  try {
+    await downloadCertificatePdfApi(projectId, selectedTemplateId.value)
+    ElMessage.success('证书 PDF 已下载')
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    pdfLoading.value = false
+  }
 }
 
 async function handleAiGenerate() {
@@ -59,12 +85,23 @@ onMounted(fetchData)
 <template>
   <div v-loading="loading">
     <!-- 操作栏（打印时隐藏） -->
-    <div class="mb-4 flex gap-3 print:hidden">
+    <div class="mb-4 flex flex-wrap items-center gap-3 print:hidden">
       <el-button text @click="router.back()">
         <el-icon><ArrowLeft /></el-icon> 返回
       </el-button>
       <el-button type="primary" @click="handlePrint">
-        <el-icon><Printer /></el-icon> 打印 / 导出PDF
+        <el-icon><Printer /></el-icon> 浏览器打印
+      </el-button>
+      <el-select
+        v-model="selectedTemplateId"
+        placeholder="选择证书模板"
+        size="default"
+        style="width: 160px"
+      >
+        <el-option v-for="t in templates" :key="t.id" :label="t.name" :value="t.id" />
+      </el-select>
+      <el-button type="success" :loading="pdfLoading" @click="handleDownloadPdf">
+        <el-icon><Download /></el-icon> 下载标准PDF
       </el-button>
       <el-button type="warning" :loading="aiLoading" @click="handleAiGenerate">
         <el-icon><MagicStick /></el-icon> AI 生成表彰语

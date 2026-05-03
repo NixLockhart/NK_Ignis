@@ -6,6 +6,10 @@ import {
   getMyProjectsApi, deleteProjectApi, submitProjectApi,
   type ProjectInfo, type ProjectFormData,
 } from '@/api/project'
+import {
+  downloadBatchCertificateZipApi, getCertTemplatesApi,
+  type CertTemplate,
+} from '@/api/certificate'
 import ProjectForm from './ProjectForm.vue'
 
 const router = useRouter()
@@ -19,6 +23,13 @@ const filterStatus = ref('')
 // 表单弹窗
 const formVisible = ref(false)
 const editData = ref<ProjectFormData | null>(null)
+
+// 批量证书弹窗
+const batchDialogVisible = ref(false)
+const batchProject = ref<ProjectInfo | null>(null)
+const batchTemplates = ref<CertTemplate[]>([])
+const batchTemplateId = ref<number | undefined>(undefined)
+const batchLoading = ref(false)
 
 const statusTagType: Record<string, string> = {
   draft: 'info',
@@ -94,6 +105,32 @@ function handleFilter() {
   fetchList()
 }
 
+async function openBatchCertificate(row: ProjectInfo) {
+  batchProject.value = row
+  batchTemplateId.value = undefined
+  batchDialogVisible.value = true
+  if (batchTemplates.value.length === 0) {
+    const res = await getCertTemplatesApi(true)
+    batchTemplates.value = res.data
+  }
+  const def = batchTemplates.value.find((t) => t.isDefault)
+  batchTemplateId.value = def?.id ?? batchTemplates.value[0]?.id
+}
+
+async function handleBatchDownload() {
+  if (!batchProject.value) return
+  batchLoading.value = true
+  try {
+    await downloadBatchCertificateZipApi(batchProject.value.id, batchTemplateId.value)
+    ElMessage.success('证书 ZIP 已开始下载')
+    batchDialogVisible.value = false
+  } catch {
+    /* */
+  } finally {
+    batchLoading.value = false
+  }
+}
+
 onMounted(fetchList)
 </script>
 
@@ -148,6 +185,11 @@ onMounted(fetchList)
           </template>
           <template v-else>
             <el-button type="primary" text size="small" @click="goDetail(row.id)">查看</el-button>
+            <el-button
+              v-if="['in_progress', 'completed'].includes(row.status)"
+              type="success" text size="small"
+              @click="openBatchCertificate(row)"
+            >批量证书</el-button>
           </template>
           <el-text v-if="row.reviewRemark" type="info" size="small" class="ml-2">
             审核意见：{{ row.reviewRemark }}
@@ -169,5 +211,23 @@ onMounted(fetchList)
 
     <!-- 新建/编辑弹窗 -->
     <ProjectForm v-model:visible="formVisible" :edit-data="editData" @saved="fetchList" />
+
+    <!-- 批量证书弹窗 -->
+    <el-dialog v-model="batchDialogVisible" title="批量导出证书" width="440px">
+      <p class="text-sm text-gray-600 mb-4">
+        将为「<strong>{{ batchProject?.title }}</strong>」中所有已确认打卡的学生生成证书并打包为 ZIP 下载。
+      </p>
+      <el-form label-width="80px">
+        <el-form-item label="模板">
+          <el-select v-model="batchTemplateId" placeholder="选择证书模板" style="width: 100%">
+            <el-option v-for="t in batchTemplates" :key="t.id" :label="t.name" :value="t.id" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="batchDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="batchLoading" @click="handleBatchDownload">开始导出</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>

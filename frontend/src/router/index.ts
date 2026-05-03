@@ -107,6 +107,12 @@ const router = createRouter({
           meta: { title: '学院管理', icon: 'School', roles: ['admin'] },
         },
         {
+          path: 'cert-template-manage',
+          name: 'CertTemplateManage',
+          component: () => import('@/views/admin/CertTemplateManage.vue'),
+          meta: { title: '证书模板', icon: 'Medal', roles: ['admin'] },
+        },
+        {
           path: 'statistics',
           name: 'Statistics',
           component: () => import('@/views/statistics/StatisticsView.vue'),
