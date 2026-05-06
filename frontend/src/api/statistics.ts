@@ -27,24 +27,60 @@ export interface ApplicationStats {
   counts: number[]
 }
 
-export function getOverviewApi() {
-  return request.get('/statistics/overview')
+export interface StatisticsFilter {
+  startDate?: string
+  endDate?: string
+  collegeId?: number
+  category?: string
 }
 
-export function getCategoryStatsApi() {
-  return request.get('/statistics/category')
+export interface DrillItem {
+  projectId: number
+  projectTitle: string
+  category: string
+  status: string
+  startTime: string | null
+  endTime: string | null
+  approvedCount: number
+  confirmedCount: number
+  totalHours: number
 }
 
-export function getCollegeStatsApi() {
-  return request.get('/statistics/college')
+export type DrillDimension = 'college' | 'category' | 'month'
+
+function paramsOf(filter?: StatisticsFilter) {
+  if (!filter) return undefined
+  const out: Record<string, string | number> = {}
+  if (filter.startDate) out.startDate = filter.startDate
+  if (filter.endDate) out.endDate = filter.endDate
+  if (filter.collegeId) out.collegeId = filter.collegeId
+  if (filter.category) out.category = filter.category
+  return out
 }
 
-export function getMonthlyHoursApi() {
-  return request.get('/statistics/monthly-hours')
+export function getOverviewApi(filter?: StatisticsFilter) {
+  return request.get('/statistics/overview', { params: paramsOf(filter) })
 }
 
-export function getApplicationStatsApi() {
-  return request.get('/statistics/applications')
+export function getCategoryStatsApi(filter?: StatisticsFilter) {
+  return request.get('/statistics/category', { params: paramsOf(filter) })
+}
+
+export function getCollegeStatsApi(filter?: StatisticsFilter) {
+  return request.get('/statistics/college', { params: paramsOf(filter) })
+}
+
+export function getMonthlyHoursApi(filter?: StatisticsFilter) {
+  return request.get('/statistics/monthly-hours', { params: paramsOf(filter) })
+}
+
+export function getApplicationStatsApi(filter?: StatisticsFilter) {
+  return request.get('/statistics/applications', { params: paramsOf(filter) })
+}
+
+export function drillStatsApi(dimension: DrillDimension, value: string, filter?: StatisticsFilter) {
+  const params = { dimension, value, ...(paramsOf(filter) || {}) }
+  return request.get('/statistics/drill', { params })
 }
 
 export interface DashboardCard {

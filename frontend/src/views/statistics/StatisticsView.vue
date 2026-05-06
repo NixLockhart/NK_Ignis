@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, markRaw } from 'vue'
+import { ref, computed, onMounted, markRaw, watch } from 'vue'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { PieChart, BarChart, LineChart } from 'echarts/charts'
@@ -11,8 +11,10 @@ import {
   getOverviewApi, getCategoryStatsApi, getCollegeStatsApi,
   getMonthlyHoursApi, getApplicationStatsApi,
   exportProjectStatsApi, exportHoursRecordsApi,
-  type OverviewStats,
+  drillStatsApi,
+  type OverviewStats, type StatisticsFilter, type DrillItem, type DrillDimension,
 } from '@/api/statistics'
+import { getCollegeListApi, type CollegeItem } from '@/api/college'
 import { nlQueryStreamApi, type ChartData } from '@/api/ai'
 import type { EChartsOption } from 'echarts'
 
@@ -22,21 +24,42 @@ use([CanvasRenderer, PieChart, BarChart, LineChart, TitleComponent, TooltipCompo
 const loading = ref(false)
 const overview = ref<OverviewStats>({ projectCount: 0, volunteerCount: 0, totalHours: 0, applicationCount: 0 })
 
-// 图表配置
-const categoryOption = ref({})
-const collegeOption = ref({})
-const monthlyOption = ref({})
-const applicationOption = ref({})
+// ========== 筛选 ==========
+const dateRange = ref<[string, string] | null>(null)
+const filterCollege = ref<number | undefined>(undefined)
+const filterCategory = ref('')
+const collegeList = ref<CollegeItem[]>([])
+const CATEGORY_OPTIONS = ['环保', '支教', '社区帮扶', '赛事服务', '医疗健康', '科技推广', '文化宣传', '其他']
+
+const currentFilter = computed<StatisticsFilter>(() => ({
+  startDate: dateRange.value?.[0] || undefined,
+  endDate: dateRange.value?.[1] || undefined,
+  collegeId: filterCollege.value,
+  category: filterCategory.value || undefined,
+}))
+
+function handleResetFilter() {
+  dateRange.value = null
+  filterCollege.value = undefined
+  filterCategory.value = ''
+}
+
+// ========== 图表配置 ==========
+const categoryOption = ref<EChartsOption>({})
+const collegeOption = ref<EChartsOption>({})
+const monthlyOption = ref<EChartsOption>({})
+const applicationOption = ref<EChartsOption>({})
 
 async function fetchData() {
   loading.value = true
   try {
+    const f = currentFilter.value
     const [overviewRes, categoryRes, collegeRes, monthlyRes, appRes] = await Promise.all([
-      getOverviewApi(),
-      getCategoryStatsApi(),
-      getCollegeStatsApi(),
-      getMonthlyHoursApi(),
-      getApplicationStatsApi(),
+      getOverviewApi(f),
+      getCategoryStatsApi(f),
+      getCollegeStatsApi(f),
+      getMonthlyHoursApi(f),
+      getApplicationStatsApi(f),
     ])
 
     overview.value = overviewRes.data
@@ -81,6 +104,40 @@ async function fetchData() {
   }
 }
 
+// ========== 下钻 ==========
+const drillVisible = ref(false)
+const drillTitle = ref('')
+const drillLoading = ref(false)
+const drillItems = ref<DrillItem[]>([])
+
+async function openDrill(dimension: DrillDimension, value: string, label: string) {
+  if (!value) return
+  drillVisible.value = true
+  drillTitle.value = label
+  drillLoading.value = true
+  drillItems.value = []
+  try {
+    const res = await drillStatsApi(dimension, value, currentFilter.value)
+    drillItems.value = res.data
+  } finally {
+    drillLoading.value = false
+  }
+}
+
+function onCategoryChartClick(params: { name?: string }) {
+  if (params?.name) openDrill('category', params.name, `项目类型「${params.name}」明细`)
+}
+function onCollegeChartClick(params: { name?: string }) {
+  if (params?.name) openDrill('college', params.name, `学院「${params.name}」明细`)
+}
+function onMonthlyChartClick(params: { name?: string }) {
+  if (params?.name) openDrill('month', params.name, `${params.name} 月度明细`)
+}
+function onApplicationChartClick(params: { name?: string }) {
+  if (params?.name) ElMessage.info(`项目「${params.name}」可在项目管理页查看详情`)
+}
+
+// ========== 导出（带筛选） ==========
 async function handleExportProjectStats() {
   try { await exportProjectStatsApi(); ElMessage.success('导出成功') } catch { ElMessage.error('导出失败') }
 }
@@ -167,12 +224,47 @@ function buildChartOption(chart: ChartData): EChartsOption {
   }
 }
 
-onMounted(fetchData)
+// 筛选条件变化时自动刷新
+watch([dateRange, filterCollege, filterCategory], () => {
+  fetchData()
+})
+
+onMounted(async () => {
+  const colRes = await getCollegeListApi()
+  collegeList.value = colRes.data
+  await fetchData()
+})
 </script>
 
 <template>
   <div v-loading="loading">
     <h2 class="text-xl font-bold text-gray-800 mb-4">统计报表</h2>
+
+    <!-- 筛选区 -->
+    <el-card shadow="never" class="mb-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="text-sm text-gray-500">筛选条件：</span>
+        <el-date-picker
+          v-model="dateRange"
+          type="daterange"
+          value-format="YYYY-MM-DD"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          size="default"
+          style="width: 280px"
+        />
+        <el-select v-model="filterCollege" placeholder="按学院筛选" clearable style="width: 180px">
+          <el-option v-for="c in collegeList" :key="c.id" :label="c.name" :value="c.id" />
+        </el-select>
+        <el-select v-model="filterCategory" placeholder="按项目类型筛选" clearable style="width: 180px">
+          <el-option v-for="cat in CATEGORY_OPTIONS" :key="cat" :label="cat" :value="cat" />
+        </el-select>
+        <el-button text type="info" @click="handleResetFilter">重置</el-button>
+        <el-tag v-if="dateRange || filterCollege || filterCategory" type="success" size="small">已应用筛选</el-tag>
+        <span class="ml-auto text-xs text-gray-400">点击图表可下钻查看明细</span>
+      </div>
+    </el-card>
 
     <!-- 总览卡片 -->
     <el-row :gutter="16" class="mb-6">
@@ -230,21 +322,29 @@ onMounted(fetchData)
       </el-col>
     </el-row>
 
-    <!-- 图表区域 -->
+    <!-- 图表区域（支持点击下钻） -->
     <el-row :gutter="16" class="mb-6">
       <el-col :xs="24" :md="12" class="mb-4 md:mb-0">
-        <el-card shadow="never"><v-chart :option="categoryOption" style="height: 350px" autoresize /></el-card>
+        <el-card shadow="never">
+          <v-chart :option="categoryOption" style="height: 350px" autoresize @click="onCategoryChartClick" />
+        </el-card>
       </el-col>
       <el-col :xs="24" :md="12">
-        <el-card shadow="never"><v-chart :option="collegeOption" style="height: 350px" autoresize /></el-card>
+        <el-card shadow="never">
+          <v-chart :option="collegeOption" style="height: 350px" autoresize @click="onCollegeChartClick" />
+        </el-card>
       </el-col>
     </el-row>
     <el-row :gutter="16" class="mb-6">
       <el-col :xs="24" :md="12" class="mb-4 md:mb-0">
-        <el-card shadow="never"><v-chart :option="monthlyOption" style="height: 350px" autoresize /></el-card>
+        <el-card shadow="never">
+          <v-chart :option="monthlyOption" style="height: 350px" autoresize @click="onMonthlyChartClick" />
+        </el-card>
       </el-col>
       <el-col :xs="24" :md="12">
-        <el-card shadow="never"><v-chart :option="applicationOption" style="height: 350px" autoresize /></el-card>
+        <el-card shadow="never">
+          <v-chart :option="applicationOption" style="height: 350px" autoresize @click="onApplicationChartClick" />
+        </el-card>
       </el-col>
     </el-row>
 
@@ -313,5 +413,31 @@ onMounted(fetchData)
         </el-button>
       </div>
     </el-card>
+
+    <!-- 下钻明细弹窗 -->
+    <el-dialog v-model="drillVisible" :title="drillTitle" width="820px">
+      <div v-loading="drillLoading">
+        <el-table :data="drillItems" stripe size="small" max-height="480">
+          <el-table-column prop="projectTitle" label="项目名称" min-width="180" show-overflow-tooltip />
+          <el-table-column prop="category" label="类型" width="100" />
+          <el-table-column label="状态" width="90" align="center">
+            <template #default="{ row }">
+              <el-tag size="small">{{ row.status }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="起止时间" width="180">
+            <template #default="{ row }">
+              <span class="text-xs text-gray-500">
+                {{ row.startTime?.slice(0, 10) || '-' }} ~ {{ row.endTime?.slice(0, 10) || '-' }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="approvedCount" label="录取人数" width="90" align="center" />
+          <el-table-column prop="confirmedCount" label="签到人次" width="90" align="center" />
+          <el-table-column prop="totalHours" label="累计时长(h)" width="110" align="center" />
+        </el-table>
+        <el-empty v-if="!drillLoading && drillItems.length === 0" description="无明细数据" :image-size="80" />
+      </div>
+    </el-dialog>
   </div>
 </template>
