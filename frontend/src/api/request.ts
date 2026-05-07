@@ -4,7 +4,7 @@ import router from '@/router'
 
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  timeout: 15000,
+  timeout: 30000,
 })
 
 // 请求拦截器：自动注入 token
@@ -38,26 +38,42 @@ request.interceptors.response.use(
     }
     return res
   },
-  (error) => {
+  async (error) => {
     const status = error.response?.status
-    const data = error.response?.data
+    let message = ''
+
+    // blob 请求失败时 response.data 是 Blob，需要先解析成 JSON 再取 message
+    const raw = error.response?.data
+    if (raw instanceof Blob) {
+      try {
+        const text = await raw.text()
+        const json = JSON.parse(text)
+        message = json?.message || ''
+      } catch {
+        // 无法解析时保持空，后续走兜底
+      }
+    } else if (raw && typeof raw === 'object') {
+      message = raw.message || ''
+    }
 
     if (status === 401) {
       // 区分：登录接口返回的401（密码错误）vs Token过期的401
-      if (data?.message) {
-        ElMessage.error(data.message)
-      } else {
-        ElMessage.error('登录已过期，请重新登录')
-      }
+      ElMessage.error(message || '登录已过期，请重新登录')
       // 非登录接口的401才清除token跳转
       if (!error.config?.url?.includes('/auth/login')) {
         localStorage.removeItem('token')
         router.push('/login')
       }
     } else if (status === 403) {
-      ElMessage.error(data?.message || '无权限访问')
+      ElMessage.error(message || '无权限访问')
+    } else if (status && status >= 400) {
+      ElMessage.error(message || `请求失败 (${status})`)
+    } else if (error.code === 'ECONNABORTED') {
+      ElMessage.error('请求超时，请稍后重试')
+    } else if (error.code === 'ERR_NETWORK' || !error.response) {
+      ElMessage.error(message || '无法连接服务器，请确认后端服务是否运行')
     } else {
-      ElMessage.error(data?.message || '网络错误')
+      ElMessage.error(message || '网络错误')
     }
     return Promise.reject(error)
   },

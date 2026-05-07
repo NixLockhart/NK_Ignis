@@ -21,20 +21,6 @@ export interface CertificateItem {
   signInTime: string | null
 }
 
-export interface CertTemplate {
-  id: number
-  name: string
-  bgColor: string
-  accentColor: string
-  signatureText: string
-  commendationStyle: string
-  commendationStyleLabel: string
-  isDefault: boolean
-  enabled: boolean
-  createdAt: string
-  updatedAt: string
-}
-
 export interface EligibleStudent {
   id: number
   realName: string
@@ -52,11 +38,16 @@ export function getMyCertificateListApi() {
 
 // ========== 证书 PDF 下载 ==========
 
-export function downloadCertificatePdfApi(projectId: number, templateId?: number, userId?: number) {
-  return request.get('/certificate/pdf', {
-    params: { projectId, templateId, userId },
-    responseType: 'blob',
-  }).then((res) => {
+export function downloadCertificatePdfApi(
+  projectId: number,
+  userId?: number,
+  commendationText?: string,
+) {
+  return request.post(
+    '/certificate/render',
+    { projectId, userId, commendationText },
+    { responseType: 'blob' },
+  ).then((res) => {
     const disposition = res.headers['content-disposition'] || ''
     const match = disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/i)
     const fileName = match ? decodeURIComponent(match[1].replace(/"/g, '')) : 'certificate.pdf'
@@ -64,8 +55,8 @@ export function downloadCertificatePdfApi(projectId: number, templateId?: number
   })
 }
 
-export function downloadBatchCertificateZipApi(projectId: number, templateId?: number) {
-  return request.post('/certificate/batch-pdf', { projectId, templateId }, {
+export function downloadBatchCertificateZipApi(projectId: number) {
+  return request.post('/certificate/batch', { projectId }, {
     responseType: 'blob',
   }).then((res) => {
     const disposition = res.headers['content-disposition'] || ''
@@ -73,24 +64,6 @@ export function downloadBatchCertificateZipApi(projectId: number, templateId?: n
     const fileName = match ? decodeURIComponent(match[1].replace(/"/g, '')) : 'certificates.zip'
     triggerDownload(res.data, fileName)
   })
-}
-
-// ========== 证书模板管理 ==========
-
-export function getCertTemplatesApi(onlyEnabled = true) {
-  return request.get('/certificate/templates', { params: { enabled: onlyEnabled } })
-}
-
-export function createCertTemplateApi(payload: Partial<CertTemplate>) {
-  return request.post('/certificate/template', payload)
-}
-
-export function updateCertTemplateApi(id: number, payload: Partial<CertTemplate>) {
-  return request.put(`/certificate/template/${id}`, payload)
-}
-
-export function deleteCertTemplateApi(id: number) {
-  return request.delete(`/certificate/template/${id}`)
 }
 
 export function getEligibleStudentsApi(projectId: number) {

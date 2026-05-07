@@ -6,10 +6,7 @@ import {
   getMyProjectsApi, deleteProjectApi, submitProjectApi,
   type ProjectInfo, type ProjectFormData,
 } from '@/api/project'
-import {
-  downloadBatchCertificateZipApi, getCertTemplatesApi,
-  type CertTemplate,
-} from '@/api/certificate'
+import { downloadBatchCertificateZipApi } from '@/api/certificate'
 import ProjectForm from './ProjectForm.vue'
 
 const router = useRouter()
@@ -27,8 +24,6 @@ const editData = ref<ProjectFormData | null>(null)
 // 批量证书弹窗
 const batchDialogVisible = ref(false)
 const batchProject = ref<ProjectInfo | null>(null)
-const batchTemplates = ref<CertTemplate[]>([])
-const batchTemplateId = ref<number | undefined>(undefined)
 const batchLoading = ref(false)
 
 const statusTagType: Record<string, string> = {
@@ -107,21 +102,14 @@ function handleFilter() {
 
 async function openBatchCertificate(row: ProjectInfo) {
   batchProject.value = row
-  batchTemplateId.value = undefined
   batchDialogVisible.value = true
-  if (batchTemplates.value.length === 0) {
-    const res = await getCertTemplatesApi(true)
-    batchTemplates.value = res.data
-  }
-  const def = batchTemplates.value.find((t) => t.isDefault)
-  batchTemplateId.value = def?.id ?? batchTemplates.value[0]?.id
 }
 
 async function handleBatchDownload() {
   if (!batchProject.value) return
   batchLoading.value = true
   try {
-    await downloadBatchCertificateZipApi(batchProject.value.id, batchTemplateId.value)
+    await downloadBatchCertificateZipApi(batchProject.value.id)
     ElMessage.success('证书 ZIP 已开始下载')
     batchDialogVisible.value = false
   } catch {
@@ -217,13 +205,7 @@ onMounted(fetchList)
       <p class="text-sm text-gray-600 mb-4">
         将为「<strong>{{ batchProject?.title }}</strong>」中所有已确认打卡的学生生成证书并打包为 ZIP 下载。
       </p>
-      <el-form label-width="80px">
-        <el-form-item label="模板">
-          <el-select v-model="batchTemplateId" placeholder="选择证书模板" style="width: 100%">
-            <el-option v-for="t in batchTemplates" :key="t.id" :label="t.name" :value="t.id" />
-          </el-select>
-        </el-form-item>
-      </el-form>
+      <p class="text-xs text-gray-400 mb-2">证书样式为系统标准蓝色版式，自动按服务记录填充内容。</p>
       <template #footer>
         <el-button @click="batchDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="batchLoading" @click="handleBatchDownload">开始导出</el-button>
