@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getLogListApi, type LogInfo } from '@/api/log'
+import { getLogListApi, getActionTypesApi, type LogInfo, type ActionTypeOption } from '@/api/log'
 
 const loading = ref(false)
 const list = ref<LogInfo[]>([])
@@ -11,22 +11,17 @@ const pageSize = ref(20)
 const filterAction = ref('')
 const filterDateRange = ref<[string, string] | null>(null)
 
-const actionOptions = [
-  { label: '用户登录', value: 'login' },
-  { label: '用户注册', value: 'register' },
-  { label: '创建项目', value: 'create_project' },
-  { label: '提交审核', value: 'submit_project' },
-  { label: '审核通过', value: 'approve_project' },
-  { label: '审核驳回', value: 'reject_project' },
-  { label: '通过报名', value: 'approve_application' },
-  { label: '拒绝报名', value: 'reject_application' },
-  { label: '签到', value: 'sign_in' },
-  { label: '签退', value: 'sign_out' },
-  { label: '确认打卡', value: 'confirm_checkin' },
-  { label: '评价活动', value: 'create_evaluation' },
-  { label: '导出数据', value: 'export_project_stats' },
-  { label: '生成证书', value: 'generate_certificate' },
-]
+// 操作类型选项从后端动态加载，与 OperationLog.ACTION_LABELS 同源
+const actionOptions = ref<ActionTypeOption[]>([])
+
+async function fetchActionTypes() {
+  try {
+    const res = await getActionTypesApi()
+    actionOptions.value = res.data
+  } catch {
+    /* 拦截器已提示 */
+  }
+}
 
 async function fetchList() {
   loading.value = true
@@ -59,7 +54,10 @@ function formatTime(time: string | null) {
   return time.replace('T', ' ').slice(0, 19)
 }
 
-onMounted(fetchList)
+onMounted(async () => {
+  await fetchActionTypes()
+  await fetchList()
+})
 </script>
 
 <template>

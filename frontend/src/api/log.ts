@@ -13,6 +13,11 @@ export interface LogInfo {
   createdAt: string | null
 }
 
+export interface ActionTypeOption {
+  value: string
+  label: string
+}
+
 export function getLogListApi(params: {
   action?: string
   userId?: number
@@ -22,4 +27,8 @@ export function getLogListApi(params: {
   pageSize?: number
 }) {
   return request.get('/log/list', { params })
+}
+
+export function getActionTypesApi() {
+  return request.get('/log/action-types')
 }

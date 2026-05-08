@@ -30,9 +30,13 @@ def sign_in(user_id, project_id):
         raise ValueError('您已签到，请先签退')
 
     # 校验是否已有完成的打卡记录（一个项目一人只能打卡一次）
+    # 排除已被驳回的记录 —— 否则被驳回后学生永远无法重新签到
     completed = Checkin.query.filter_by(
         project_id=project_id, user_id=user_id
-    ).filter(Checkin.sign_out_time.isnot(None)).first()
+    ).filter(
+        Checkin.sign_out_time.isnot(None),
+        Checkin.status != 'rejected',
+    ).first()
     if completed:
         raise ValueError('您已完成该项目的打卡，不能重复签到')
 

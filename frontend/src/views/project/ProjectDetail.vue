@@ -107,6 +107,8 @@ async function handleCancelApply() {
   await cancelApplicationApi(myApplication.value.id)
   ElMessage.success('已取消报名')
   myApplication.value = null
+  // 同步刷新项目详情（名额数、报名按钮状态等）
+  await fetchDetail()
 }
 
 // 签到

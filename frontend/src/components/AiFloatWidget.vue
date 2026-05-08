@@ -10,6 +10,7 @@ import {
   type RecommendItem,
 } from '@/api/ai'
 import { ElMessage } from 'element-plus'
+import { PROJECT_CATEGORIES } from '@/constants/category'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -144,7 +145,7 @@ function formatTime(t: string | null) { return t ? t.replace('T', ' ').slice(0, 
                 </el-form-item>
                 <el-form-item label="类型">
                   <el-select v-model="certForm.category" placeholder="选择类型" size="small">
-                    <el-option v-for="c in ['环保','助教','社区服务','文化活动','敬老助残','其他']" :key="c" :label="c" :value="c" />
+                    <el-option v-for="c in PROJECT_CATEGORIES" :key="c" :label="c" :value="c" />
                   </el-select>
                 </el-form-item>
                 <el-form-item><el-button type="primary" size="small" :loading="certLoading" @click="handleGenerateText">生成文案</el-button></el-form-item>

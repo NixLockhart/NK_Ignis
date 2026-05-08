@@ -2,6 +2,7 @@
 import { reactive, ref, watch } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createProjectApi, updateProjectApi, type ProjectFormData } from '@/api/project'
+import { PROJECT_CATEGORIES } from '@/constants/category'
 
 const props = defineProps<{
   visible: boolean
@@ -17,7 +18,7 @@ const formRef = ref<FormInstance>()
 const loading = ref(false)
 const isEdit = ref(false)
 
-const categoryOptions = ['环保', '助教', '社区服务', '文化活动', '敬老助残', '其他']
+const categoryOptions = PROJECT_CATEGORIES
 
 const form = reactive<ProjectFormData>({
   title: '',

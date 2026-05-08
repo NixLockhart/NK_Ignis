@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getProjectListApi, type ProjectInfo } from '@/api/project'
+import { PROJECT_CATEGORIES } from '@/constants/category'
 
 const router = useRouter()
 const loading = ref(false)
@@ -19,7 +20,7 @@ const statusTagType: Record<string, string> = {
   completed: 'info',
 }
 
-const categoryOptions = ['环保', '助教', '社区服务', '文化活动', '敬老助残', '其他']
+const categoryOptions = PROJECT_CATEGORIES
 
 async function fetchList() {
   loading.value = true

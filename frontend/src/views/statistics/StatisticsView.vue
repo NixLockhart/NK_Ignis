@@ -16,6 +16,7 @@ import {
 } from '@/api/statistics'
 import { getCollegeListApi, type CollegeItem } from '@/api/college'
 import { nlQueryStreamApi, type ChartData } from '@/api/ai'
+import { PROJECT_CATEGORIES } from '@/constants/category'
 import type { EChartsOption } from 'echarts'
 
 // 注册 ECharts 组件
@@ -29,7 +30,7 @@ const dateRange = ref<[string, string] | null>(null)
 const filterCollege = ref<number | undefined>(undefined)
 const filterCategory = ref('')
 const collegeList = ref<CollegeItem[]>([])
-const CATEGORY_OPTIONS = ['环保', '支教', '社区帮扶', '赛事服务', '医疗健康', '科技推广', '文化宣传', '其他']
+const CATEGORY_OPTIONS = PROJECT_CATEGORIES
 
 const currentFilter = computed<StatisticsFilter>(() => ({
   startDate: dateRange.value?.[0] || undefined,

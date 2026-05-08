@@ -2,17 +2,34 @@ from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from services import log_service
 from utils.response import success, error
+from utils.auth import require_current_user
 from models.user import User
+from models.operation_log import OperationLog
 
 log_bp = Blueprint('log', __name__, url_prefix='/api/log')
+
+
+@log_bp.route('/action-types', methods=['GET'])
+@jwt_required()
+def action_types():
+    """返回完整的操作类型字典，供前端筛选下拉使用。
+
+    与 OperationLog.ACTION_LABELS 同源，新增 action 时无需手动同步前端。
+    """
+    user = require_current_user()
+    if user.role != 'admin':
+        return error('仅管理员可访问', 403)
+    return success(data=[
+        {'value': k, 'label': v}
+        for k, v in OperationLog.ACTION_LABELS.items()
+    ])
 
 
 @log_bp.route('/list', methods=['GET'])
 @jwt_required()
 def log_list():
     """操作日志列表（仅 admin）"""
-    user_id = int(get_jwt_identity())
-    user = User.query.get(user_id)
+    user = require_current_user()
     if user.role != 'admin':
         return error('仅管理员可查看日志', 403)
 
