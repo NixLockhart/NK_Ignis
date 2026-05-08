@@ -6,6 +6,7 @@ from services.auth_service import (
 )
 from utils.response import success, error
 from utils.log_util import log_operation
+from utils.auth import require_current_user
 from models.user import User
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
@@ -60,10 +61,7 @@ def login():
 @jwt_required()
 def profile():
     """获取当前用户信息"""
-    user_id = int(get_jwt_identity())
-    user = User.query.get(user_id)
-    if not user:
-        return error('用户不存在', 404)
+    user = require_current_user()
     return success(data=user.to_dict())
 
 
@@ -88,8 +86,7 @@ def update_profile_route():
 @jwt_required()
 def user_list():
     """管理员查看用户列表"""
-    user_id = int(get_jwt_identity())
-    user = User.query.get(user_id)
+    user = require_current_user()
     if user.role != 'admin':
         return error('仅管理员可查看用户列表', 403)
 
@@ -106,20 +103,19 @@ def user_list():
 @jwt_required()
 def change_role():
     """管理员修改用户角色"""
-    admin_id = int(get_jwt_identity())
-    admin = User.query.get(admin_id)
+    admin = require_current_user()
     if admin.role != 'admin':
         return error('仅管理员可修改角色', 403)
 
-    data = request.get_json()
+    data = request.get_json() or {}
     target_user_id = data.get('userId')
-    new_role = data.get('role', '').strip()
+    new_role = (data.get('role') or '').strip()
     if not target_user_id or not new_role:
         return error('缺少用户ID或角色参数')
 
     try:
         user = update_user_role(target_user_id, new_role)
-        log_operation(admin_id, 'change_role', 'user', target_user_id,
+        log_operation(admin.id, 'change_role', 'user', target_user_id,
                       f'将用户 {user.username} 角色修改为 {new_role}')
         return success(message='角色修改成功')
     except ValueError as e:

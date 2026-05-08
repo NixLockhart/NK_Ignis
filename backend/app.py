@@ -2,9 +2,10 @@ import os
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from werkzeug.exceptions import HTTPException
 from config import Config
 from models import db
 from routes import register_blueprints
@@ -28,6 +29,17 @@ def create_app():
     def ping():
         return success(message='pong')
 
+    # 全局 HTTPException → 项目统一 JSON 格式
+    # 让 utils.auth.require_current_user() 内的 abort(401, description='...')
+    # 不再返回 Flask 默认 HTML，而是 {code, message, data} 形式
+    @app.errorhandler(HTTPException)
+    def handle_http_exception(e):
+        return jsonify({
+            'code': e.code,
+            'message': e.description or e.name,
+            'data': None,
+        }), e.code
+
     # 创建数据库表 & 种子数据
     with app.app_context():
         # 导入所有模型以确保建表
@@ -38,11 +50,9 @@ def create_app():
         from models.checkin import Checkin  # noqa: F841
         from models.evaluation import Evaluation  # noqa: F841
         from models.college import College  # noqa: F841
-        from models.cert_template import CertTemplate
 
         db.create_all()
         _seed_admin(User)
-        _seed_default_templates(CertTemplate)
 
     return app
 
@@ -62,26 +72,6 @@ def _seed_admin(User):
         admin.set_password('admin123')
         db.session.add(admin)
         db.session.commit()
-
-
-def _seed_default_templates(CertTemplate):
-    """初始化证书默认模板（仅在表为空时插入）"""
-    if CertTemplate.query.count() > 0:
-        return
-    presets = [
-        dict(name='经典蓝', bg_color='#F8FAFB', accent_color='#4F6EF7',
-             signature_text='高校青年志愿者服务中心', commendation_style='formal',
-             is_default=True, enabled=True),
-        dict(name='暖橙', bg_color='#FFF8F0', accent_color='#F59E0B',
-             signature_text='高校青年志愿者服务中心', commendation_style='warm',
-             is_default=False, enabled=True),
-        dict(name='稳重黑', bg_color='#F4F4F5', accent_color='#1F2937',
-             signature_text='高校青年志愿者服务中心', commendation_style='concise',
-             is_default=False, enabled=True),
-    ]
-    for p in presets:
-        db.session.add(CertTemplate(**p))
-    db.session.commit()
 
 
 if __name__ == '__main__':

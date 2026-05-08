@@ -5,6 +5,7 @@ from services import recommend_service
 from models.user import User
 from utils.response import success, error
 from utils.log_util import log_operation
+from utils.auth import require_current_user
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/api/ai')
 
@@ -13,18 +14,17 @@ ai_bp = Blueprint('ai', __name__, url_prefix='/api/ai')
 @jwt_required()
 def policy_qa():
     """智能政策问答（阻塞模式）"""
-    user_id = int(get_jwt_identity())
-    user = User.query.get(user_id)
-    data = request.get_json()
-    if not data or not data.get('question', '').strip():
+    user = require_current_user()
+    data = request.get_json() or {}
+    if not data.get('question', '').strip():
         return error('请输入问题')
 
     question = data['question'].strip()
     if len(question) > 500:
         return error('问题长度不能超过500字')
 
-    result = ai_service.policy_qa(question, user_id, user.role)
-    log_operation(user_id, 'ai_policy_qa', detail=f'问题：{question[:100]}')
+    result = ai_service.policy_qa(question, user.id, user.role)
+    log_operation(user.id, 'ai_policy_qa', detail=f'问题：{question[:100]}')
     return success(data=result)
 
 
@@ -32,10 +32,9 @@ def policy_qa():
 @jwt_required()
 def policy_qa_stream():
     """智能政策问答（流式模式）"""
-    user_id = int(get_jwt_identity())
-    user = User.query.get(user_id)
-    data = request.get_json()
-    if not data or not data.get('question', '').strip():
+    user = require_current_user()
+    data = request.get_json() or {}
+    if not data.get('question', '').strip():
         return error('请输入问题')
 
     question = data['question'].strip()
@@ -43,9 +42,9 @@ def policy_qa_stream():
         return error('问题长度不能超过500字')
 
     # 先记录日志（流式中无法操作数据库）
-    log_operation(user_id, 'ai_policy_qa', detail=f'问题：{question[:100]}')
+    log_operation(user.id, 'ai_policy_qa', detail=f'问题：{question[:100]}')
 
-    generator = ai_service.policy_qa_stream(question, user_id, user.role)
+    generator = ai_service.policy_qa_stream(question, user.id, user.role)
     return Response(
         stream_with_context(generator),
         content_type='text/event-stream',
@@ -57,10 +56,8 @@ def policy_qa_stream():
 @jwt_required()
 def certificate_text():
     """证书文案生成（阻塞模式）"""
-    user_id = int(get_jwt_identity())
-    data = request.get_json()
-    if not data:
-        return error('请求数据不能为空')
+    user = require_current_user()
+    data = request.get_json() or {}
 
     user_name = data.get('userName', '').strip()
     project_title = data.get('projectTitle', '').strip()
@@ -76,7 +73,7 @@ def certificate_text():
         category=data.get('category', ''),
     )
     log_operation(
-        user_id, 'ai_certificate_text', 'certificate', None,
+        user.id, 'ai_certificate_text', 'certificate', None,
         f'为 {user_name} 生成 {project_title} 证书文案',
     )
     return success(data=result)
@@ -86,10 +83,8 @@ def certificate_text():
 @jwt_required()
 def certificate_text_stream():
     """证书文案生成（流式模式）"""
-    user_id = int(get_jwt_identity())
-    data = request.get_json()
-    if not data:
-        return error('请求数据不能为空')
+    user = require_current_user()
+    data = request.get_json() or {}
 
     user_name = data.get('userName', '').strip()
     project_title = data.get('projectTitle', '').strip()
@@ -99,7 +94,7 @@ def certificate_text_stream():
         return error('姓名和项目名称不能为空')
 
     log_operation(
-        user_id, 'ai_certificate_text', 'certificate', None,
+        user.id, 'ai_certificate_text', 'certificate', None,
         f'为 {user_name} 生成 {project_title} 证书文案',
     )
 
@@ -120,18 +115,17 @@ def certificate_text_stream():
 @jwt_required()
 def nl_query_stream():
     """自然语言数据查询（流式：查DB→Dify分析→流式返回分析文本+图表数据）"""
-    user_id = int(get_jwt_identity())
-    user = User.query.get(user_id)
+    user = require_current_user()
     if user.role != 'admin':
         return error('数据查询功能仅限管理员使用', 403)
-    data = request.get_json()
-    if not data or not data.get('question', '').strip():
+    data = request.get_json() or {}
+    if not data.get('question', '').strip():
         return error('请输入查询问题')
 
     question = data['question'].strip()
-    log_operation(user_id, 'ai_nl_query', detail=f'查询：{question[:100]}')
+    log_operation(user.id, 'ai_nl_query', detail=f'查询：{question[:100]}')
 
-    generator = ai_service.nl_query_stream(question, user_id, user.role)
+    generator = ai_service.nl_query_stream(question, user.id, user.role)
     return Response(
         stream_with_context(generator),
         content_type='text/event-stream',
@@ -143,12 +137,11 @@ def nl_query_stream():
 @jwt_required()
 def recommend():
     """项目智能推荐（仅学生）"""
-    user_id = int(get_jwt_identity())
-    user = User.query.get(user_id)
+    user = require_current_user()
     if user.role != 'student':
         return error('推荐功能仅面向学生', 403)
 
-    log_operation(user_id, 'ai_recommend', detail='获取项目推荐')
+    log_operation(user.id, 'ai_recommend', detail='获取项目推荐')
 
-    result = recommend_service.get_recommendations_with_ai(user_id)
+    result = recommend_service.get_recommendations_with_ai(user.id)
     return success(data=result)

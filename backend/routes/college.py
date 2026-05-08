@@ -4,6 +4,7 @@ from models import db
 from models.college import College
 from models.user import User
 from utils.response import success, error
+from utils.auth import require_current_user
 
 college_bp = Blueprint('college', __name__, url_prefix='/api/college')
 
@@ -19,12 +20,11 @@ def college_list():
 @jwt_required()
 def create_college():
     """新增学院（仅管理员）"""
-    user_id = int(get_jwt_identity())
-    user = User.query.get(user_id)
+    user = require_current_user()
     if user.role != 'admin':
         return error('仅管理员可操作', 403)
 
-    data = request.get_json()
+    data = request.get_json() or {}
     name = (data.get('name') or '').strip()
     if not name:
         return error('学院名称不能为空')
@@ -41,8 +41,7 @@ def create_college():
 @jwt_required()
 def update_college(college_id):
     """修改学院（仅管理员）"""
-    user_id = int(get_jwt_identity())
-    user = User.query.get(user_id)
+    user = require_current_user()
     if user.role != 'admin':
         return error('仅管理员可操作', 403)
 
@@ -50,7 +49,7 @@ def update_college(college_id):
     if not c:
         return error('学院不存在', 404)
 
-    data = request.get_json()
+    data = request.get_json() or {}
     name = (data.get('name') or '').strip()
     if name and name != c.name:
         if College.query.filter_by(name=name).first():
@@ -67,8 +66,7 @@ def update_college(college_id):
 @jwt_required()
 def delete_college(college_id):
     """删除学院（仅管理员）"""
-    user_id = int(get_jwt_identity())
-    user = User.query.get(user_id)
+    user = require_current_user()
     if user.role != 'admin':
         return error('仅管理员可操作', 403)
 

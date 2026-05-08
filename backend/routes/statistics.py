@@ -2,14 +2,15 @@ from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from services import statistics_service
 from utils.response import success, error
+from utils.auth import require_current_user
 from models.user import User
 
 statistics_bp = Blueprint('statistics', __name__, url_prefix='/api/statistics')
 
 
 def _get_current_user():
-    user_id = int(get_jwt_identity())
-    return User.query.get(user_id)
+    """获取当前登录用户；user 不存在时由 require_current_user 直接 abort 401。"""
+    return require_current_user()
 
 
 def _require_admin():
