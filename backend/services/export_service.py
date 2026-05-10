@@ -1,9 +1,50 @@
 from io import BytesIO
+from datetime import datetime
 from openpyxl import Workbook
+from models import db
 from models.project import Project
 from models.application import Application
 from models.checkin import Checkin
 from models.user import User
+
+
+def _parse_date(s):
+    """与 statistics_service 同款日期解析；解析失败返回 None。"""
+    if not s:
+        return None
+    if isinstance(s, datetime):
+        return s
+    try:
+        return datetime.strptime(str(s)[:10], '%Y-%m-%d')
+    except (ValueError, TypeError):
+        return None
+
+
+def _apply_project_filters(query, start_date=None, end_date=None,
+                           category=None, college_id=None):
+    """对项目相关查询追加日期 / 类型 / 学院筛选。
+
+    与 statistics_service 的筛选语义保持一致：
+    - 日期范围按 Project.start_time
+    - 学院通过该项目存在 approved 报名人匹配
+    """
+    sd = _parse_date(start_date)
+    ed = _parse_date(end_date)
+    if sd:
+        query = query.filter(Project.start_time >= sd)
+    if ed:
+        query = query.filter(Project.start_time <= ed)
+    if category:
+        query = query.filter(Project.category == category)
+    if college_id:
+        sub = db.session.query(Application.project_id).join(
+            User, User.id == Application.user_id
+        ).filter(
+            Application.status == 'approved',
+            User.college_id == college_id,
+        ).distinct().subquery()
+        query = query.filter(Project.id.in_(sub.select()))
+    return query
 
 
 def export_application_list(project_id):
@@ -39,9 +80,11 @@ def export_application_list(project_id):
     return buf, f'{project.title}_报名名单.xlsx'
 
 
-def export_project_stats():
-    """导出项目统计数据"""
-    projects = Project.query.filter_by(is_deleted=False).all()
+def export_project_stats(start_date=None, end_date=None, category=None, college_id=None):
+    """导出项目统计数据（支持按时间区间 / 类型 / 学院筛选，与统计页保持一致）"""
+    query = Project.query.filter_by(is_deleted=False)
+    query = _apply_project_filters(query, start_date, end_date, category, college_id)
+    projects = query.order_by(Project.start_time.desc()).all()
 
     wb = Workbook()
     ws = wb.active
@@ -67,9 +110,29 @@ def export_project_stats():
     return buf, '项目统计数据.xlsx'
 
 
-def export_hours_records():
-    """导出志愿者时长记录"""
-    checkins = Checkin.query.filter_by(status='confirmed').all()
+def export_hours_records(start_date=None, end_date=None, category=None, college_id=None):
+    """导出志愿者时长记录（支持按时间区间 / 类型 / 学院筛选）
+
+    日期范围按 Checkin.sign_in_time 过滤（与统计页月度趋势同口径）。
+    """
+    query = Checkin.query.filter_by(status='confirmed')
+
+    sd = _parse_date(start_date)
+    ed = _parse_date(end_date)
+    if sd:
+        query = query.filter(Checkin.sign_in_time >= sd)
+    if ed:
+        query = query.filter(Checkin.sign_in_time <= ed)
+    if category:
+        query = query.join(Project, Checkin.project_id == Project.id).filter(
+            Project.category == category
+        )
+    if college_id:
+        query = query.join(User, User.id == Checkin.user_id).filter(
+            User.college_id == college_id
+        )
+
+    checkins = query.all()
 
     wb = Workbook()
     ws = wb.active

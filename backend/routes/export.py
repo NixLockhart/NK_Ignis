@@ -1,4 +1,4 @@
-from flask import Blueprint, send_file
+from flask import Blueprint, request, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from services import export_service
 from utils.response import error
@@ -15,6 +15,16 @@ def _get_current_user():
     return require_current_user()
 
 
+def _filter_args():
+    """从 query string 抽取统计/导出共用的筛选参数"""
+    return {
+        'start_date': request.args.get('startDate') or None,
+        'end_date': request.args.get('endDate') or None,
+        'category': request.args.get('category') or None,
+        'college_id': request.args.get('collegeId', type=int),
+    }
+
+
 @export_bp.route('/applications', methods=['GET'])
 @jwt_required()
 def export_applications():
@@ -23,7 +33,6 @@ def export_applications():
     if user.role not in ('leader', 'admin'):
         return error('无权限', 403)
 
-    from flask import request
     project_id = request.args.get('projectId', type=int)
     if not project_id:
         return error('缺少项目ID')
@@ -48,12 +57,12 @@ def export_applications():
 @export_bp.route('/project-stats', methods=['GET'])
 @jwt_required()
 def export_project_stats():
-    """导出项目统计数据"""
+    """导出项目统计数据（支持与统计页一致的筛选参数）"""
     user = _get_current_user()
     if user.role != 'admin':
         return error('仅管理员可导出', 403)
 
-    buf, filename = export_service.export_project_stats()
+    buf, filename = export_service.export_project_stats(**_filter_args())
     log_operation(user.id, 'export_project_stats', None, None, '导出项目统计数据')
     return send_file(buf, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                      as_attachment=True, download_name=filename)
@@ -62,12 +71,12 @@ def export_project_stats():
 @export_bp.route('/hours-records', methods=['GET'])
 @jwt_required()
 def export_hours_records():
-    """导出志愿者时长记录"""
+    """导出志愿者时长记录（支持与统计页一致的筛选参数）"""
     user = _get_current_user()
     if user.role != 'admin':
         return error('仅管理员可导出', 403)
 
-    buf, filename = export_service.export_hours_records()
+    buf, filename = export_service.export_hours_records(**_filter_args())
     log_operation(user.id, 'export_hours_records', None, None, '导出时长记录')
     return send_file(buf, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                      as_attachment=True, download_name=filename)

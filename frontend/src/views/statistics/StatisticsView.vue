@@ -140,10 +140,16 @@ function onApplicationChartClick(params: { name?: string }) {
 
 // ========== 导出（带筛选） ==========
 async function handleExportProjectStats() {
-  try { await exportProjectStatsApi(); ElMessage.success('导出成功') } catch { ElMessage.error('导出失败') }
+  try {
+    await exportProjectStatsApi(currentFilter.value)
+    ElMessage.success('导出成功')
+  } catch { ElMessage.error('导出失败') }
 }
 async function handleExportHours() {
-  try { await exportHoursRecordsApi(); ElMessage.success('导出成功') } catch { ElMessage.error('导出失败') }
+  try {
+    await exportHoursRecordsApi(currentFilter.value)
+    ElMessage.success('导出成功')
+  } catch { ElMessage.error('导出失败') }
 }
 
 // ========== AI 智能查询（生成式UI） ==========

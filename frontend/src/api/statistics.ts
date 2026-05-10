@@ -122,10 +122,10 @@ export function exportApplicationsApi(projectId: number) {
   return downloadFile('/export/applications', { projectId })
 }
 
-export function exportProjectStatsApi() {
-  return downloadFile('/export/project-stats')
+export function exportProjectStatsApi(filter?: StatisticsFilter) {
+  return downloadFile('/export/project-stats', paramsOf(filter))
 }
 
-export function exportHoursRecordsApi() {
-  return downloadFile('/export/hours-records')
+export function exportHoursRecordsApi(filter?: StatisticsFilter) {
+  return downloadFile('/export/hours-records', paramsOf(filter))
 }
