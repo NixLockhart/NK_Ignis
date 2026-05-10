@@ -62,3 +62,13 @@ export function getUserListApi(params: { page?: number; pageSize?: number; role?
 export function changeRoleApi(userId: number, role: string) {
   return request.put('/auth/role', { userId, role })
 }
+
+// 用户：自助修改密码
+export function changePasswordApi(oldPassword: string, newPassword: string) {
+  return request.post('/auth/change-password', { oldPassword, newPassword })
+}
+
+// 管理员：重置用户密码（不传 newPassword 时后端默认重置为 123456）
+export function resetPasswordApi(userId: number, newPassword?: string) {
+  return request.post('/auth/reset-password', { userId, newPassword })
+}

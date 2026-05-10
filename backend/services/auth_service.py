@@ -111,3 +111,39 @@ def update_user_role(user_id, new_role):
     user.role = new_role
     db.session.commit()
     return user
+
+
+def change_password(user_id, old_password, new_password):
+    """用户自助修改密码"""
+    user = User.query.get(user_id)
+    if not user:
+        raise ValueError('用户不存在')
+    if not old_password or not user.check_password(old_password):
+        raise ValueError('原密码错误')
+    if not new_password or len(new_password) < 6 or len(new_password) > 20:
+        raise ValueError('新密码长度必须在6到20个字符之间')
+    if old_password == new_password:
+        raise ValueError('新密码不能与原密码相同')
+
+    user.set_password(new_password)
+    db.session.commit()
+    return user
+
+
+def reset_password_by_admin(operator_id, target_user_id, new_password='123456'):
+    """管理员重置用户密码（默认重置为 123456）"""
+    operator = User.query.get(operator_id)
+    if not operator or operator.role != 'admin':
+        raise PermissionError('仅管理员可重置密码')
+
+    target = User.query.get(target_user_id)
+    if not target:
+        raise ValueError('用户不存在')
+    if target.username == 'admin':
+        raise ValueError('不能重置超级管理员的密码')
+    if not new_password or len(new_password) < 6 or len(new_password) > 20:
+        raise ValueError('密码长度必须在6到20个字符之间')
+
+    target.set_password(new_password)
+    db.session.commit()
+    return target

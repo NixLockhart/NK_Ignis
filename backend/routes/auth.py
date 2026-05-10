@@ -3,6 +3,7 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from services.auth_service import (
     register_user, authenticate_user, update_profile,
     get_user_list, update_user_role,
+    change_password, reset_password_by_admin,
 )
 from utils.response import success, error
 from utils.log_util import log_operation
@@ -119,4 +120,45 @@ def change_role():
                       f'将用户 {user.username} 角色修改为 {new_role}')
         return success(message='角色修改成功')
     except ValueError as e:
+        return error(str(e))
+
+
+@auth_bp.route('/change-password', methods=['POST'])
+@jwt_required()
+def change_password_route():
+    """用户自助修改密码"""
+    user = require_current_user()
+    data = request.get_json() or {}
+    old_password = data.get('oldPassword') or ''
+    new_password = data.get('newPassword') or ''
+
+    try:
+        change_password(user.id, old_password, new_password)
+        log_operation(user.id, 'change_password', 'user', user.id, '修改密码')
+        return success(message='密码修改成功，请使用新密码重新登录')
+    except ValueError as e:
+        return error(str(e))
+
+
+@auth_bp.route('/reset-password', methods=['POST'])
+@jwt_required()
+def reset_password_route():
+    """管理员重置用户密码（默认重置为 123456）"""
+    admin = require_current_user()
+    if admin.role != 'admin':
+        return error('仅管理员可重置密码', 403)
+
+    data = request.get_json() or {}
+    target_user_id = data.get('userId')
+    if not target_user_id:
+        return error('缺少用户ID')
+
+    new_password = (data.get('newPassword') or '').strip() or '123456'
+
+    try:
+        target = reset_password_by_admin(admin.id, target_user_id, new_password)
+        log_operation(admin.id, 'reset_password', 'user', target_user_id,
+                      f'重置用户 {target.username} 的密码')
+        return success(data={'newPassword': new_password}, message='密码已重置')
+    except (ValueError, PermissionError) as e:
         return error(str(e))

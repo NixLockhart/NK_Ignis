@@ -32,12 +32,13 @@ async function fetchDashboard() {
   try { const res = await getDashboardApi(); cards.value = res.data.cards } finally { loading.value = false }
 }
 
-const CACHE_KEY = 'rec_cache'
+// 按用户隔离缓存键，避免同标签页登出 A 登入 B 时仍看到 A 的推荐
+const cacheKey = computed(() => `rec_cache_${userStore.userInfo?.id ?? 'anon'}`)
 
 async function fetchRecommend(forceRefresh = false) {
   if (!forceRefresh) {
     try {
-      const cached = sessionStorage.getItem(CACHE_KEY)
+      const cached = sessionStorage.getItem(cacheKey.value)
       if (cached) { recList.value = JSON.parse(cached); return }
     } catch { /* ignore */ }
   }
@@ -45,7 +46,7 @@ async function fetchRecommend(forceRefresh = false) {
   try {
     const res = await getRecommendApi()
     recList.value = res.data
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify(res.data))
+    sessionStorage.setItem(cacheKey.value, JSON.stringify(res.data))
   } catch { ElMessage.error('获取推荐失败') } finally { recLoading.value = false }
 }
 

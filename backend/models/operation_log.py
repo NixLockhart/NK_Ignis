@@ -33,6 +33,7 @@ class OperationLog(db.Model):
         'ai_policy_qa': 'AI政策问答', 'ai_certificate_text': 'AI文案生成',
         'ai_nl_query': 'AI数据查询', 'ai_recommend': 'AI项目推荐',
         'update_profile': '更新个人信息', 'change_role': '修改用户角色',
+        'change_password': '修改密码', 'reset_password': '重置密码',
     }
 
     def to_dict(self):

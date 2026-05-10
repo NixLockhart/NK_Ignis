@@ -58,20 +58,34 @@ def create_app():
 
 
 def _seed_admin(User):
-    """初始化管理员账号（仅在不存在时创建）"""
-    if not User.query.filter_by(username='admin').first():
-        admin = User(
-            username='admin',
-            real_name='系统管理员',
-            student_id='000000',
-            college='管理部门',
-            major='系统管理',
-            phone='00000000000',
-            role='admin',
-        )
-        admin.set_password('admin123')
-        db.session.add(admin)
-        db.session.commit()
+    """初始化管理员账号（仅在不存在时创建）。
+
+    同时确保"管理部门"学院记录存在并把 admin.college_id 设上，
+    避免出现 college_id 为 NULL 导致统计按学院分组时漏掉 admin 的情况。
+    """
+    if User.query.filter_by(username='admin').first():
+        return
+
+    from models.college import College
+    college = College.query.filter_by(name='管理部门').first()
+    if not college:
+        college = College(name='管理部门', sort_order=999)
+        db.session.add(college)
+        db.session.flush()  # 立即拿到 college.id
+
+    admin = User(
+        username='admin',
+        real_name='系统管理员',
+        student_id='000000',
+        college='管理部门',
+        college_id=college.id,
+        major='系统管理',
+        phone='00000000000',
+        role='admin',
+    )
+    admin.set_password('admin123')
+    db.session.add(admin)
+    db.session.commit()
 
 
 if __name__ == '__main__':

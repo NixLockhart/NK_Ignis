@@ -5,9 +5,9 @@ import { useUserStore } from '@/stores/user'
 import { getTotalHoursApi, getHoursDetailApi, type HoursDetail } from '@/api/checkin'
 import { getMyEvaluationsApi, type EvaluationInfo } from '@/api/evaluation'
 import { getMyCertificateListApi, type CertificateItem } from '@/api/certificate'
-import { updateProfileApi } from '@/api/auth'
+import { updateProfileApi, changePasswordApi } from '@/api/auth'
 import { getCollegeListApi, type CollegeItem } from '@/api/college'
-import { ElMessage } from 'element-plus'
+import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -44,8 +44,10 @@ function goCertificate(projectId: number) {
   router.push(`/certificate/${projectId}`)
 }
 
-// 编辑个人信息
+// ========== 编辑个人信息 ==========
+
 const editDialogVisible = ref(false)
+const editFormRef = ref<FormInstance>()
 const collegeList = ref<CollegeItem[]>([])
 const editForm = reactive({
   realName: '',
@@ -54,6 +56,19 @@ const editForm = reactive({
   phone: '',
 })
 const editLoading = ref(false)
+
+const editRules: FormRules = {
+  realName: [
+    { required: true, message: '请输入姓名', trigger: 'blur' },
+    { min: 2, max: 20, message: '姓名长度需在 2 到 20 个字符之间', trigger: 'blur' },
+  ],
+  college: [{ required: true, message: '请选择学院', trigger: 'change' }],
+  major: [{ required: true, message: '请输入专业', trigger: 'blur' }],
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' },
+  ],
+}
 
 function openEditDialog() {
   const info = userStore.userInfo
@@ -67,6 +82,8 @@ function openEditDialog() {
 }
 
 async function handleSaveProfile() {
+  const valid = await editFormRef.value?.validate().catch(() => false)
+  if (!valid) return
   editLoading.value = true
   try {
     await updateProfileApi(editForm)
@@ -77,6 +94,63 @@ async function handleSaveProfile() {
     // 错误已在拦截器处理
   } finally {
     editLoading.value = false
+  }
+}
+
+// ========== 修改密码 ==========
+
+const passwordDialogVisible = ref(false)
+const passwordFormRef = ref<FormInstance>()
+const passwordForm = reactive({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+})
+const passwordLoading = ref(false)
+
+const passwordRules: FormRules = {
+  oldPassword: [{ required: true, message: '请输入原密码', trigger: 'blur' }],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, max: 20, message: '密码长度需在 6 到 20 个字符之间', trigger: 'blur' },
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        if (value !== passwordForm.newPassword) {
+          callback(new Error('两次输入的密码不一致'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur',
+    },
+  ],
+}
+
+function openPasswordDialog() {
+  passwordForm.oldPassword = ''
+  passwordForm.newPassword = ''
+  passwordForm.confirmPassword = ''
+  passwordDialogVisible.value = true
+}
+
+async function handleChangePassword() {
+  const valid = await passwordFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  passwordLoading.value = true
+  try {
+    await changePasswordApi(passwordForm.oldPassword, passwordForm.newPassword)
+    passwordDialogVisible.value = false
+    ElMessage.success('密码修改成功，请重新登录')
+    // 强制重新登录
+    userStore.logout()
+    router.push('/login')
+  } catch {
+    // 错误已在拦截器处理
+  } finally {
+    passwordLoading.value = false
   }
 }
 
@@ -95,7 +169,10 @@ onMounted(() => {
       <template #header>
         <div class="flex items-center justify-between">
           <span class="font-semibold">基本信息</span>
-          <el-button type="primary" text size="small" @click="openEditDialog">编辑信息</el-button>
+          <div class="flex gap-2">
+            <el-button type="primary" text size="small" @click="openEditDialog">编辑信息</el-button>
+            <el-button type="warning" text size="small" @click="openPasswordDialog">修改密码</el-button>
+          </div>
         </div>
       </template>
       <el-descriptions :column="3" border>
@@ -187,25 +264,44 @@ onMounted(() => {
 
     <!-- 编辑个人信息弹窗 -->
     <el-dialog v-model="editDialogVisible" title="编辑个人信息" width="450px">
-      <el-form :model="editForm" label-width="80px">
-        <el-form-item label="姓名">
+      <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-width="80px">
+        <el-form-item label="姓名" prop="realName">
           <el-input v-model="editForm.realName" />
         </el-form-item>
-        <el-form-item label="学院">
-          <el-select v-model="editForm.college" placeholder="选择学院" filterable>
+        <el-form-item label="学院" prop="college">
+          <el-select v-model="editForm.college" placeholder="选择学院" filterable style="width: 100%">
             <el-option v-for="c in collegeList" :key="c.id" :label="c.name" :value="c.name" />
           </el-select>
         </el-form-item>
-        <el-form-item label="专业">
+        <el-form-item label="专业" prop="major">
           <el-input v-model="editForm.major" />
         </el-form-item>
-        <el-form-item label="手机号">
-          <el-input v-model="editForm.phone" />
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="editForm.phone" maxlength="11" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="editDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="editLoading" @click="handleSaveProfile">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 修改密码弹窗 -->
+    <el-dialog v-model="passwordDialogVisible" title="修改密码" width="420px">
+      <el-form ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" label-width="90px">
+        <el-form-item label="原密码" prop="oldPassword">
+          <el-input v-model="passwordForm.oldPassword" type="password" show-password placeholder="请输入原密码" />
+        </el-form-item>
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input v-model="passwordForm.newPassword" type="password" show-password placeholder="6-20 位字符" />
+        </el-form-item>
+        <el-form-item label="确认新密码" prop="confirmPassword">
+          <el-input v-model="passwordForm.confirmPassword" type="password" show-password placeholder="再次输入新密码" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="passwordDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="passwordLoading" @click="handleChangePassword">确认修改</el-button>
       </template>
     </el-dialog>
   </div>

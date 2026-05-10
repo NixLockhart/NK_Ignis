@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getUserListApi, changeRoleApi, type UserInfo } from '@/api/auth'
+import { getUserListApi, changeRoleApi, resetPasswordApi, type UserInfo } from '@/api/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const loading = ref(false)
@@ -60,6 +60,20 @@ async function handleChangeRole(userId: number, username: string, newRole: strin
   }
 }
 
+async function handleResetPassword(userId: number, username: string) {
+  try {
+    await ElMessageBox.confirm(
+      `确定将用户 "${username}" 的密码重置为初始密码 "123456"？请提醒用户登录后及时修改。`,
+      '确认重置密码',
+      { type: 'warning', confirmButtonText: '重置', cancelButtonText: '取消' },
+    )
+    const res = await resetPasswordApi(userId)
+    ElMessage.success(`已重置为：${res.data.newPassword}`)
+  } catch {
+    // 用户取消或请求失败
+  }
+}
+
 function handleFilter() {
   page.value = 1
   fetchList()
@@ -110,6 +124,20 @@ onMounted(fetchList)
             <el-option v-for="r in roleOptions" :key="r.value" :label="r.label" :value="r.value" />
           </el-select>
           <span v-else class="text-xs text-gray-400">超级管理员</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="密码" width="110" fixed="right">
+        <template #default="{ row }">
+          <el-button
+            v-if="row.username !== 'admin'"
+            type="warning"
+            text
+            size="small"
+            @click="handleResetPassword(row.id, row.username)"
+          >
+            重置密码
+          </el-button>
+          <span v-else class="text-xs text-gray-400">--</span>
         </template>
       </el-table-column>
     </el-table>
