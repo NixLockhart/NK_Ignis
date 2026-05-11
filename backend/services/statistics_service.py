@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import func, extract, and_
+from sqlalchemy import func, extract
 from models import db
 from models.project import Project
 from models.application import Application

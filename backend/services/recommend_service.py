@@ -1,6 +1,6 @@
 import json
 import random
-from sqlalchemy import func
+from sqlalchemy import func, select
 from flask import current_app
 from models import db
 from models.user import User
@@ -29,15 +29,16 @@ def get_recommendations(user_id):
     preferred_categories = [r[0] for r in sorted(history_categories, key=lambda x: x[1], reverse=True)]
 
     # 2. 获取当前可报名项目（已发布且学生未报名）
-    already_applied = db.session.query(Application.project_id).filter(
+    # 使用 select() 包装 subquery，避免 SQLAlchemy 2.x 的 SAWarning
+    already_applied_select = select(Application.project_id).filter(
         Application.user_id == user_id,
         Application.status != 'cancelled',
-    ).subquery()
+    )
 
     candidates = Project.query.filter(
         Project.is_deleted == False,
         Project.status == 'published',
-        ~Project.id.in_(already_applied),
+        ~Project.id.in_(already_applied_select),
     ).all()
 
     if not candidates:

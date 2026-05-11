@@ -44,12 +44,21 @@ def apply_project(user_id, project_id, reason=None):
 
 
 def cancel_application(app_id, user_id):
-    """取消报名（仅 pending 状态、仅本人）"""
+    """取消报名（仅本人；pending 随时可取消，approved 仅在项目未开始前可取消）"""
     app = _get_application_or_raise(app_id)
     if app.user_id != user_id:
         raise PermissionError('只能取消自己的报名')
-    if app.status != 'pending':
-        raise ValueError('只有待审核状态的报名可以取消')
+
+    if app.status == 'cancelled':
+        raise ValueError('该报名已取消，无需重复操作')
+    if app.status == 'rejected':
+        raise ValueError('已被驳回的报名无法取消')
+
+    if app.status == 'approved':
+        # 已录取学生：仅在项目尚未开始时允许退出，避免影响已签到打卡
+        project = Project.query.get(app.project_id)
+        if project and project.start_time and project.start_time <= datetime.now():
+            raise ValueError('项目已开始，无法取消报名')
 
     app.status = 'cancelled'
     db.session.commit()

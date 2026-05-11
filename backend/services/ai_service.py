@@ -114,10 +114,34 @@ def generate_certificate_text_stream(user_name, project_title, duration_hours, c
 
 # ========== 自然语言查询 ==========
 
+# NL 查询本地黑名单：即使 Dify Agent 生成了恶意 SQL，后端也直接拒绝
+# 把可能修改数据的关键词都拦在这里
+_NL_DANGEROUS_KEYWORDS = (
+    'delete', 'update ', 'insert', 'drop', 'truncate',
+    'alter', 'grant', 'revoke', 'create ', 'replace ',
+)
+
+
+def _is_dangerous_query(question: str) -> bool:
+    """检测自然语言问题中是否包含敏感 SQL 关键词"""
+    if not question:
+        return False
+    text = question.lower()
+    return any(kw in text for kw in _NL_DANGEROUS_KEYWORDS)
+
+
 def nl_query_stream(question, user_id, role='student'):
     """自然语言数据查询（生成式UI版）：直接转发给 Dify Agent，后端透传 SSE 流并解析 ```chart 块"""
     base_url = _get_base_url()
     api_key = current_app.config.get('DIFY_NL_API_KEY', '')
+
+    # 本地黑名单兜底：拦住涉及修改数据的关键词
+    if _is_dangerous_query(question):
+        yield _sse_data({
+            'content': '为安全起见，本系统仅支持只读查询，不允许涉及修改/删除数据的操作。请换一种问法。',
+        })
+        yield _sse_done()
+        return
 
     yield _sse_data({'type': 'status', 'content': 'AI 正在查询数据库并分析...'})
 
