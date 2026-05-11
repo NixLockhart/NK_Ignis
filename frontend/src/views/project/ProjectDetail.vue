@@ -111,11 +111,30 @@ async function handleCancelApply() {
   await fetchDetail()
 }
 
+/**
+ * 获取当前定位（HTML5 Geolocation）。
+ * - 成功：返回 { lat, lng }
+ * - 失败 / 不支持 / 拒绝：返回 null（后端会按"未上传位置"处理）
+ */
+async function _getGeolocation(): Promise<{ lat: number; lng: number } | null> {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    return null
+  }
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { timeout: 8000, maximumAge: 30000, enableHighAccuracy: false },
+    )
+  })
+}
+
 // 签到
 async function handleSignIn() {
   checkinLoading.value = true
   try {
-    await signInApi(Number(route.params.id))
+    const pos = await _getGeolocation()
+    await signInApi(Number(route.params.id), pos?.lat, pos?.lng)
     ElMessage.success('签到成功')
     fetchDetail()
   } finally { checkinLoading.value = false }
@@ -126,7 +145,8 @@ async function handleSignOut() {
   await ElMessageBox.confirm('确定签退？签退后将自动计算服务时长。', '确认签退')
   checkinLoading.value = true
   try {
-    await signOutApi(Number(route.params.id))
+    const pos = await _getGeolocation()
+    await signOutApi(Number(route.params.id), pos?.lat, pos?.lng)
     ElMessage.success('签退成功')
     fetchDetail()
   } finally { checkinLoading.value = false }

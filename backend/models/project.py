@@ -23,6 +23,14 @@ class Project(db.Model):
     is_deleted = db.Column(db.Boolean, default=False, comment='逻辑删除标记')
     creator_id = db.Column(db.Integer, db.ForeignKey('tb_user.id'), nullable=False,
                            comment='创建人ID')
+
+    # ====== 打卡真实性控制（P1-11 三重验证：时间窗 + 地理位置 + 负责人确认）======
+    lat = db.Column(db.Float, nullable=True, comment='签到地点纬度（不填则不做位置校验）')
+    lng = db.Column(db.Float, nullable=True, comment='签到地点经度（不填则不做位置校验）')
+    radius_m = db.Column(db.Integer, default=200, comment='签到允许半径（米）')
+    sign_in_window_minutes = db.Column(db.Integer, default=30,
+                                       comment='允许提前/延后签到的分钟数')
+
     created_at = db.Column(db.DateTime, default=datetime.now, comment='创建时间')
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now,
                            comment='更新时间')
@@ -68,6 +76,10 @@ class Project(db.Model):
             'contact': self.contact,
             'notice': self.notice,
             'reviewRemark': self.review_remark,
+            'lat': self.lat,
+            'lng': self.lng,
+            'radiusM': self.radius_m,
+            'signInWindowMinutes': self.sign_in_window_minutes,
             'creatorId': self.creator_id,
             'creatorName': self.creator.real_name if self.creator else None,
             'createdAt': self.created_at.isoformat() if self.created_at else None,

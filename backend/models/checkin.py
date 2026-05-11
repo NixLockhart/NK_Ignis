@@ -17,6 +17,7 @@ class Checkin(db.Model):
     status = db.Column(db.String(20), nullable=False, default='pending',
                        comment='状态：pending/confirmed/rejected')
     is_abnormal = db.Column(db.Boolean, default=False, comment='异常标记')
+    abnormal_reason = db.Column(db.String(100), comment='异常原因分类：time_window/location/duration_too_short/duration_too_long')
     remark = db.Column(db.String(500), comment='备注/驳回原因')
     checked_by = db.Column(db.Integer, db.ForeignKey('tb_user.id'), comment='确认人ID')
     checked_time = db.Column(db.DateTime, comment='确认时间')
@@ -25,6 +26,13 @@ class Checkin(db.Model):
         'pending': '待确认',
         'confirmed': '已确认',
         'rejected': '已驳回',
+    }
+
+    ABNORMAL_REASON_LABELS = {
+        'time_window': '签到时间异常',
+        'location': '签到位置异常',
+        'duration_too_short': '服务时长过短',
+        'duration_too_long': '服务时长异常长',
     }
 
     project = db.relationship('Project', backref='checkins', lazy=True)
@@ -45,6 +53,8 @@ class Checkin(db.Model):
             'status': self.status,
             'statusLabel': self.STATUS_LABELS.get(self.status, '未知'),
             'isAbnormal': self.is_abnormal,
+            'abnormalReason': self.abnormal_reason,
+            'abnormalReasonLabel': self.ABNORMAL_REASON_LABELS.get(self.abnormal_reason, '') if self.abnormal_reason else None,
             'remark': self.remark,
             'checkedBy': self.checked_by,
             'checkerName': self.checker.real_name if self.checker else None,

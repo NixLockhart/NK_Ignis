@@ -13,6 +13,8 @@ export interface CheckinInfo {
   status: string
   statusLabel: string
   isAbnormal: boolean
+  abnormalReason: string | null
+  abnormalReasonLabel: string | null
   remark: string | null
   checkedBy: number | null
   checkerName: string | null
@@ -27,14 +29,14 @@ export interface HoursDetail {
   signOutTime: string | null
 }
 
-// 签到
-export function signInApi(projectId: number) {
-  return request.post('/checkin/sign-in', { projectId })
+// 签到（可选携带经纬度用于地理位置校验）
+export function signInApi(projectId: number, lat?: number, lng?: number) {
+  return request.post('/checkin/sign-in', { projectId, lat, lng })
 }
 
-// 签退
-export function signOutApi(projectId: number) {
-  return request.post('/checkin/sign-out', { projectId })
+// 签退（可选携带经纬度用于位置异常检测）
+export function signOutApi(projectId: number, lat?: number, lng?: number) {
+  return request.post('/checkin/sign-out', { projectId, lat, lng })
 }
 
 // 确认打卡

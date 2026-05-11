@@ -131,9 +131,11 @@ onMounted(fetchMyProjects)
       <el-table-column label="时长(h)" width="90" align="center">
         <template #default="{ row }">{{ row.durationHours ?? '--' }}</template>
       </el-table-column>
-      <el-table-column label="异常" width="70" align="center">
+      <el-table-column label="异常" width="120" align="center">
         <template #default="{ row }">
-          <el-tag v-if="row.isAbnormal" type="danger" size="small">异常</el-tag>
+          <el-tag v-if="row.isAbnormal" type="danger" size="small">
+            {{ row.abnormalReasonLabel || '异常' }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="状态" width="100" align="center">

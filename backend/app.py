@@ -52,9 +52,50 @@ def create_app():
         from models.college import College  # noqa: F841
 
         db.create_all()
+        _ensure_columns()
         _seed_admin(User)
 
     return app
+
+
+def _ensure_columns():
+    """对已建好的表追加新字段（db.create_all 不会 ALTER 已存在表）。
+
+    引入新字段时把映射加进 new_columns 即可，启动时会自动补齐。
+    当前需要确保：
+    - tb_project.lat / lng / radius_m / sign_in_window_minutes（P1-11 打卡真实性）
+    - tb_checkin.abnormal_reason（P1-11 异常分类）
+    """
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+
+    new_columns = {
+        'tb_project': {
+            'lat': 'DOUBLE NULL',
+            'lng': 'DOUBLE NULL',
+            'radius_m': 'INT DEFAULT 200',
+            'sign_in_window_minutes': 'INT DEFAULT 30',
+        },
+        'tb_checkin': {
+            'abnormal_reason': 'VARCHAR(100) NULL',
+        },
+    }
+
+    for table_name, cols in new_columns.items():
+        if not inspector.has_table(table_name):
+            continue
+        existing = {c['name'] for c in inspector.get_columns(table_name)}
+        for col_name, col_type in cols.items():
+            if col_name in existing:
+                continue
+            try:
+                db.session.execute(text(
+                    f'ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type}'
+                ))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
 
 def _seed_admin(User):

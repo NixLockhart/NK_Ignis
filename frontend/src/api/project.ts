@@ -15,6 +15,10 @@ export interface ProjectInfo {
   contact: string
   notice: string
   reviewRemark: string | null
+  lat: number | null
+  lng: number | null
+  radiusM: number | null
+  signInWindowMinutes: number | null
   creatorId: number
   creatorName: string | null
   createdAt: string | null
@@ -40,6 +44,10 @@ export interface ProjectFormData {
   maxPeople: number
   contact: string
   notice: string
+  lat?: number | null
+  lng?: number | null
+  radiusM?: number | null
+  signInWindowMinutes?: number | null
 }
 
 // 创建项目

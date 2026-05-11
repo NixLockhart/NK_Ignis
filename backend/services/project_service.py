@@ -16,6 +16,10 @@ def create_project(creator_id, data):
         max_people=int(data.get('maxPeople', 0)),
         contact=data.get('contact', ''),
         notice=data.get('notice', ''),
+        lat=_parse_float(data.get('lat')),
+        lng=_parse_float(data.get('lng')),
+        radius_m=int(data.get('radiusM') or 200),
+        sign_in_window_minutes=int(data.get('signInWindowMinutes') or 30),
         status='draft',
         creator_id=creator_id,
     )
@@ -46,6 +50,16 @@ def update_project(project_id, user_id, data):
         project.registration_deadline = _parse_time(data['registrationDeadline'])
     if 'maxPeople' in data:
         project.max_people = int(data['maxPeople'])
+
+    # 打卡真实性相关字段（P1-11）
+    if 'lat' in data:
+        project.lat = _parse_float(data['lat'])
+    if 'lng' in data:
+        project.lng = _parse_float(data['lng'])
+    if 'radiusM' in data:
+        project.radius_m = int(data['radiusM'] or 200)
+    if 'signInWindowMinutes' in data:
+        project.sign_in_window_minutes = int(data['signInWindowMinutes'] or 30)
 
     db.session.commit()
     return project
@@ -170,6 +184,16 @@ def _parse_time(time_str):
         return None
     try:
         return datetime.fromisoformat(time_str)
+    except (ValueError, TypeError):
+        return None
+
+
+def _parse_float(v):
+    """解析浮点数（None / 空字符串返回 None）"""
+    if v is None or v == '':
+        return None
+    try:
+        return float(v)
     except (ValueError, TypeError):
         return None
 

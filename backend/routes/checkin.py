@@ -18,15 +18,18 @@ def _get_current_user():
 @checkin_bp.route('/sign-in', methods=['POST'])
 @jwt_required()
 def sign_in():
-    """签到"""
+    """签到（可携带 lat/lng 用于地理位置校验）"""
     user = _get_current_user()
-    data = request.get_json()
-    project_id = data.get('projectId') if data else None
+    data = request.get_json() or {}
+    project_id = data.get('projectId')
     if not project_id:
         return error('缺少项目ID')
 
+    lat = data.get('lat')
+    lng = data.get('lng')
+
     try:
-        checkin = checkin_service.sign_in(user.id, project_id)
+        checkin = checkin_service.sign_in(user.id, project_id, lat=lat, lng=lng)
         log_operation(user.id, 'sign_in', 'checkin', checkin.id,
                       f'签到：{checkin.project.title}')
         return success(data=checkin.to_dict(), message='签到成功')
@@ -37,15 +40,18 @@ def sign_in():
 @checkin_bp.route('/sign-out', methods=['POST'])
 @jwt_required()
 def sign_out():
-    """签退"""
+    """签退（可携带 lat/lng 用于位置异常检测）"""
     user = _get_current_user()
-    data = request.get_json()
-    project_id = data.get('projectId') if data else None
+    data = request.get_json() or {}
+    project_id = data.get('projectId')
     if not project_id:
         return error('缺少项目ID')
 
+    lat = data.get('lat')
+    lng = data.get('lng')
+
     try:
-        checkin = checkin_service.sign_out(user.id, project_id)
+        checkin = checkin_service.sign_out(user.id, project_id, lat=lat, lng=lng)
         log_operation(user.id, 'sign_out', 'checkin', checkin.id,
                       f'签退：{checkin.project.title}，时长{checkin.duration_hours}h')
         return success(data=checkin.to_dict(), message='签退成功')

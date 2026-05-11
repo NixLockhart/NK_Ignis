@@ -31,6 +31,10 @@ const form = reactive<ProjectFormData>({
   maxPeople: 0,
   contact: '',
   notice: '',
+  lat: null,
+  lng: null,
+  radiusM: 200,
+  signInWindowMinutes: 30,
 })
 
 const rules: FormRules = {
@@ -50,13 +54,17 @@ const rules: FormRules = {
 watch(() => props.editData, (data) => {
   if (data) {
     isEdit.value = !!data.id
-    Object.assign(form, data)
+    Object.assign(form, {
+      lat: null, lng: null, radiusM: 200, signInWindowMinutes: 30,
+      ...data,
+    })
   } else {
     isEdit.value = false
     Object.assign(form, {
       id: undefined, title: '', content: '', location: '', category: '',
       startTime: '', endTime: '', registrationDeadline: '',
       maxPeople: 0, contact: '', notice: '',
+      lat: null, lng: null, radiusM: 200, signInWindowMinutes: 30,
     })
   }
 }, { immediate: true })
@@ -141,6 +149,30 @@ async function handleSubmit() {
       <el-form-item label="注意事项">
         <el-input v-model="form.notice" type="textarea" :rows="2" placeholder="请输入注意事项" maxlength="1000" show-word-limit />
       </el-form-item>
+
+      <!-- 打卡真实性控制（可选）：填了 lat/lng 后签到会做位置校验 -->
+      <el-divider content-position="left">
+        <span class="text-xs text-gray-500">签到真实性控制（可选）</span>
+      </el-divider>
+      <div class="flex gap-3">
+        <el-form-item label="签到点纬度" class="flex-1">
+          <el-input-number v-model="form.lat" :precision="6" :step="0.000001" placeholder="如 39.904030" class="!w-full" controls-position="right" />
+        </el-form-item>
+        <el-form-item label="签到点经度" class="flex-1">
+          <el-input-number v-model="form.lng" :precision="6" :step="0.000001" placeholder="如 116.407526" class="!w-full" controls-position="right" />
+        </el-form-item>
+      </div>
+      <div class="flex gap-3">
+        <el-form-item label="允许半径(米)" class="flex-1">
+          <el-input-number v-model="form.radiusM" :min="10" :max="5000" :step="10" class="!w-full" />
+        </el-form-item>
+        <el-form-item label="时间窗(分钟)" class="flex-1">
+          <el-input-number v-model="form.signInWindowMinutes" :min="0" :max="240" :step="5" class="!w-full" />
+        </el-form-item>
+      </div>
+      <div class="text-xs text-gray-400 -mt-2 mb-3">
+        填写经纬度后，学生签到时会做位置校验（偏离半径外拒绝）；时间窗指允许提前 / 延后签到的分钟数。不填则不做相关校验。
+      </div>
     </el-form>
 
     <template #footer>
