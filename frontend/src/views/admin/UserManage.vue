@@ -113,6 +113,11 @@ onMounted(fetchList)
           <el-tag :type="roleTagType[row.role] || 'info'" size="small">{{ roleMap[row.role] || row.role }}</el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="注册时间" width="160">
+        <template #default="{ row }">
+          {{ row.createdAt ? row.createdAt.replace('T', ' ').slice(0, 16) : '--' }}
+        </template>
+      </el-table-column>
       <el-table-column label="角色操作" width="160">
         <template #default="{ row }">
           <el-select

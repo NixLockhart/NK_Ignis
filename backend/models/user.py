@@ -18,6 +18,7 @@ class User(db.Model):
     role = db.Column(db.String(20), nullable=False, default='student',
                      comment='角色：student/leader/admin')
     phone = db.Column(db.String(20), nullable=False, comment='手机号')
+    email = db.Column(db.String(100), nullable=True, comment='邮箱（可选）')
     created_at = db.Column(db.DateTime, default=datetime.now, comment='创建时间')
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now,
                            comment='更新时间')
@@ -48,5 +49,7 @@ class User(db.Model):
             'major': self.major,
             'role': self.role,
             'phone': self.phone,
+            'email': self.email,
             'createdAt': self.created_at.isoformat() if self.created_at else None,
+            'updatedAt': self.updated_at.isoformat() if self.updated_at else None,
         }

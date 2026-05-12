@@ -4,7 +4,7 @@ from models.user import User
 from models.college import College
 
 
-def register_user(username, password, real_name, student_id, college, major, phone):
+def register_user(username, password, real_name, student_id, college, major, phone, email=None):
     """注册新用户"""
     # 密码强度校验
     if not password or len(password) < 6 or len(password) > 20:
@@ -13,6 +13,10 @@ def register_user(username, password, real_name, student_id, college, major, pho
     # 手机号格式校验
     if not re.match(r'^1[3-9]\d{9}$', phone or ''):
         raise ValueError('请输入正确的手机号')
+
+    # 邮箱格式（可选字段，填了才校验）
+    if email and not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', email):
+        raise ValueError('请输入正确的邮箱地址')
 
     # 检查用户名是否已存在
     if User.query.filter_by(username=username).first():
@@ -33,6 +37,7 @@ def register_user(username, password, real_name, student_id, college, major, pho
         college=college,
         major=major,
         phone=phone,
+        email=email or None,
         role='student',
     )
     user.set_password(password)
@@ -50,7 +55,7 @@ def authenticate_user(username, password):
 
 
 def update_profile(user_id, data):
-    """更新个人信息（允许修改：姓名、学院、专业、手机号）"""
+    """更新个人信息（允许修改：姓名、学院、专业、手机号、邮箱）"""
     user = User.query.get(user_id)
     if not user:
         raise ValueError('用户不存在')
@@ -68,6 +73,11 @@ def update_profile(user_id, data):
         if not re.match(r'^1[3-9]\d{9}$', data['phone']):
             raise ValueError('请输入正确的手机号')
         user.phone = data['phone'].strip()
+    if 'email' in data:
+        email = (data['email'] or '').strip()
+        if email and not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', email):
+            raise ValueError('请输入正确的邮箱地址')
+        user.email = email or None
 
     db.session.commit()
     return user

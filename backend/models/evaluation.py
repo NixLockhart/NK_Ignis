@@ -3,8 +3,20 @@ from models import db
 
 
 class Evaluation(db.Model):
-    """活动评价表"""
+    """活动评价表
+
+    业务唯一约束：(project_id, user_id, evaluator_role, target_user_id) 不能重复，
+    即同一人在同一项目下、同一身份对同一对象只能评一次。target_user_id 学生侧评价为
+    NULL，负责人评学生时为目标学生 id。MySQL 中 NULL ≠ NULL，所以学生评价不会被这个
+    联合 unique 当成"重复"拦截。
+    """
     __tablename__ = 'tb_evaluation'
+    __table_args__ = (
+        db.UniqueConstraint(
+            'project_id', 'user_id', 'evaluator_role', 'target_user_id',
+            name='uq_evaluation_project_user_role_target',
+        ),
+    )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     project_id = db.Column(db.Integer, db.ForeignKey('tb_project.id'), nullable=False,

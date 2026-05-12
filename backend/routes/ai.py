@@ -1,5 +1,6 @@
 from flask import Blueprint, request, Response, stream_with_context
 from flask_jwt_extended import jwt_required, get_jwt_identity
+import json
 from services import ai_service
 from services import recommend_service
 from models.user import User
@@ -9,6 +10,36 @@ from utils.auth import require_current_user
 from utils.ratelimit import rate_limit
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/api/ai')
+
+
+def _wrap_with_audit(generator, on_finish):
+    """包装 SSE generator：流式响应完整产出后，调用 on_finish(captured_text)。
+
+    用途：让流式 AI 接口在响应结束后能记录最终输出（截取前 200 字）到操作日志，
+    满足"AI 输出可审计"要求（P2-28）。
+    """
+    captured: list[str] = []
+
+    def _inner():
+        for chunk in generator:
+            # chunk 形如 `data: {...}\n\n`，尝试解出 content 字段做审计快照
+            if isinstance(chunk, str) and chunk.startswith('data:'):
+                payload = chunk[5:].strip()
+                if payload and payload != '[DONE]':
+                    try:
+                        obj = json.loads(payload)
+                        if isinstance(obj, dict) and obj.get('content'):
+                            captured.append(str(obj['content']))
+                    except Exception:
+                        pass
+            yield chunk
+        try:
+            on_finish(''.join(captured))
+        except Exception:
+            # 审计失败不影响响应
+            pass
+
+    return _inner()
 
 
 # 各 AI 接口的限流配置（限制周期/秒，限制次数）
@@ -66,12 +97,19 @@ def policy_qa_stream():
     if len(question) > 500:
         return error('问题长度不能超过500字')
 
-    # 先记录日志（流式中无法操作数据库）
+    # 先记录请求日志（流式响应中不便操作数据库）
     log_operation(user.id, 'ai_policy_qa', detail=f'问题：{question[:100]}')
 
     generator = ai_service.policy_qa_stream(question, user.id, user.role)
+    # 流式结束后追加一条 AI 输出审计日志
+    audited = _wrap_with_audit(
+        generator,
+        lambda answer: log_operation(
+            user.id, 'ai_policy_qa', detail=f'回答：{answer[:200]}',
+        ) if answer else None,
+    )
     return Response(
-        stream_with_context(generator),
+        stream_with_context(audited),
         content_type='text/event-stream',
         headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
     )
@@ -137,8 +175,15 @@ def certificate_text_stream():
         duration_hours=duration_hours,
         category=data.get('category', ''),
     )
+    audited = _wrap_with_audit(
+        generator,
+        lambda text: log_operation(
+            user.id, 'ai_certificate_text', 'certificate', None,
+            f'生成文案：{text[:200]}',
+        ) if text else None,
+    )
     return Response(
-        stream_with_context(generator),
+        stream_with_context(audited),
         content_type='text/event-stream',
         headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
     )
@@ -164,8 +209,14 @@ def nl_query_stream():
     log_operation(user.id, 'ai_nl_query', detail=f'查询：{question[:100]}')
 
     generator = ai_service.nl_query_stream(question, user.id, user.role)
+    audited = _wrap_with_audit(
+        generator,
+        lambda text: log_operation(
+            user.id, 'ai_nl_query', detail=f'分析输出：{text[:200]}',
+        ) if text else None,
+    )
     return Response(
-        stream_with_context(generator),
+        stream_with_context(audited),
         content_type='text/event-stream',
         headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
     )

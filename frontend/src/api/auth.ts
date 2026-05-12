@@ -13,6 +13,7 @@ export interface RegisterParams {
   college: string
   major: string
   phone: string
+  email?: string
 }
 
 export interface UserInfo {
@@ -21,9 +22,13 @@ export interface UserInfo {
   realName: string
   studentId: string
   college: string
+  collegeId?: number | null
   major: string
   role: string
   phone: string
+  email?: string | null
+  createdAt?: string | null
+  updatedAt?: string | null
 }
 
 // 登录
@@ -47,6 +52,7 @@ export interface UpdateProfileParams {
   college?: string
   major?: string
   phone?: string
+  email?: string
 }
 
 export function updateProfileApi(data: UpdateProfileParams) {

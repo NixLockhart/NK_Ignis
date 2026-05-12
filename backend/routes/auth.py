@@ -34,6 +34,7 @@ def register():
             college=data['college'],
             major=data['major'],
             phone=data['phone'],
+            email=data.get('email'),
         )
         log_operation(user.id, 'register', 'user', user.id, f'用户 {user.username} 注册成功')
         return success(message='注册成功')

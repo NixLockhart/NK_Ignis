@@ -1,6 +1,12 @@
 from datetime import datetime
+from time import time as _now_ts
 from models import db
 from models.project import Project
+
+
+# _auto_transition_projects 节流配置：60 秒内不重复扫表（避免每次列表请求都触发 3 次扫表）
+_TRANSITION_INTERVAL_SEC = 60
+_last_auto_transition_at = 0.0
 
 
 def create_project(creator_id, data):
@@ -199,7 +205,13 @@ def _parse_float(v):
 
 
 def _auto_transition_projects():
-    """自动流转过期项目状态（懒检测）"""
+    """自动流转过期项目状态（懒检测，节流：每 60 秒最多执行一次扫表）"""
+    global _last_auto_transition_at
+    now_ts = _now_ts()
+    if now_ts - _last_auto_transition_at < _TRANSITION_INTERVAL_SEC:
+        return
+    _last_auto_transition_at = now_ts
+
     now = datetime.now()
     changed = False
 

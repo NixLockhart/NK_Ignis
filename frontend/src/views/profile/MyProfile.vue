@@ -54,6 +54,7 @@ const editForm = reactive({
   college: '',
   major: '',
   phone: '',
+  email: '',
 })
 const editLoading = ref(false)
 
@@ -68,6 +69,15 @@ const editRules: FormRules = {
     { required: true, message: '请输入手机号', trigger: 'blur' },
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' },
   ],
+  email: [
+    {
+      validator: (_rule, value, callback) => {
+        if (!value) { callback(); return }
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) { callback() } else { callback(new Error('邮箱格式不正确')) }
+      },
+      trigger: 'blur',
+    },
+  ],
 }
 
 function openEditDialog() {
@@ -77,6 +87,7 @@ function openEditDialog() {
     editForm.college = info.college
     editForm.major = info.major
     editForm.phone = info.phone
+    editForm.email = info.email || ''
   }
   editDialogVisible.value = true
 }
@@ -278,6 +289,9 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="手机号" prop="phone">
           <el-input v-model="editForm.phone" maxlength="11" />
+        </el-form-item>
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="editForm.email" placeholder="可选" maxlength="100" />
         </el-form-item>
       </el-form>
       <template #footer>

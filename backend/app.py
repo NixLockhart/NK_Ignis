@@ -65,6 +65,7 @@ def _ensure_columns():
     当前需要确保：
     - tb_project.lat / lng / radius_m / sign_in_window_minutes（P1-11 打卡真实性）
     - tb_checkin.abnormal_reason（P1-11 异常分类）
+    - tb_user.email（P2-24 邮箱可选字段）
     """
     from sqlalchemy import inspect, text
 
@@ -79,6 +80,9 @@ def _ensure_columns():
         },
         'tb_checkin': {
             'abnormal_reason': 'VARCHAR(100) NULL',
+        },
+        'tb_user': {
+            'email': 'VARCHAR(100) NULL',
         },
     }
 
