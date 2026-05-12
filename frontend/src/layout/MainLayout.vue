@@ -40,14 +40,23 @@ const menuItems = computed(() => {
 })
 
 function menuTitle(item: any): string {
-  if (item.path === 'dashboard' && userStore.role === 'student') return '首页'
-  return (item.meta?.title as string) || ''
+  return resolveDisplayTitle(item.path, item.meta?.title)
 }
 
 const topBarTitle = computed(() => {
-  if (route.path === '/dashboard' && userStore.role === 'student') return '首页'
-  return (route.meta?.title as string) || ''
+  // route.path 是绝对路径（如 '/dashboard'），与 menuItems 的 path（'dashboard'）不同
+  return resolveDisplayTitle(route.path, route.meta?.title)
 })
+
+/**
+ * 把"控制台 / dashboard"对学生显示为"首页"，其他情况按 meta.title 显示。
+ * 同时被侧栏菜单和顶部标题复用，避免规则散落两处。
+ */
+function resolveDisplayTitle(path: string | undefined, fallback: unknown): string {
+  const normalized = (path || '').replace(/^\//, '')
+  if (normalized === 'dashboard' && userStore.role === 'student') return '首页'
+  return (fallback as string) || ''
+}
 
 function handleLogout() {
   userStore.logout()

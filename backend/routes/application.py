@@ -108,46 +108,54 @@ def reject():
 @application_bp.route('/batch-approve', methods=['POST'])
 @jwt_required()
 def batch_approve():
-    """批量通过报名"""
+    """批量通过报名（返回失败明细方便前端展示）"""
     user = _get_current_user()
     if user.role not in ('leader', 'admin'):
         return error('无权限', 403)
-    data = request.get_json()
-    ids = data.get('ids', []) if data else []
+    data = request.get_json() or {}
+    ids = data.get('ids', [])
     if not ids:
         return error('请选择报名记录')
-    ok, fail = 0, 0
+    ok = 0
+    failures = []
     for aid in ids:
         try:
             application_service.approve_application(aid, user.id)
             ok += 1
-        except Exception:
-            fail += 1
+        except Exception as e:
+            failures.append({'id': aid, 'reason': str(e) or '操作失败'})
     log_operation(user.id, 'approve_application', detail=f'批量通过{ok}条报名')
-    return success(message=f'成功通过{ok}条，失败{fail}条')
+    return success(
+        data={'okCount': ok, 'failCount': len(failures), 'failures': failures},
+        message=f'成功通过{ok}条，失败{len(failures)}条',
+    )
 
 
 @application_bp.route('/batch-reject', methods=['POST'])
 @jwt_required()
 def batch_reject():
-    """批量拒绝报名"""
+    """批量拒绝报名（返回失败明细）"""
     user = _get_current_user()
     if user.role not in ('leader', 'admin'):
         return error('无权限', 403)
-    data = request.get_json()
-    ids = data.get('ids', []) if data else []
+    data = request.get_json() or {}
+    ids = data.get('ids', [])
     remark = data.get('remark', '批量拒绝')
     if not ids:
         return error('请选择报名记录')
-    ok, fail = 0, 0
+    ok = 0
+    failures = []
     for aid in ids:
         try:
             application_service.reject_application(aid, user.id, remark)
             ok += 1
-        except Exception:
-            fail += 1
+        except Exception as e:
+            failures.append({'id': aid, 'reason': str(e) or '操作失败'})
     log_operation(user.id, 'reject_application', detail=f'批量拒绝{ok}条报名')
-    return success(message=f'成功拒绝{ok}条，失败{fail}条')
+    return success(
+        data={'okCount': ok, 'failCount': len(failures), 'failures': failures},
+        message=f'成功拒绝{ok}条，失败{len(failures)}条',
+    )
 
 
 @application_bp.route('/list', methods=['GET'])

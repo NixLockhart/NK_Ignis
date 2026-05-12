@@ -83,9 +83,10 @@ onMounted(fetchList)
       <el-table-column label="审核意见" width="180">
         <template #default="{ row }">{{ row.reviewRemark || '--' }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="100" fixed="right">
+      <el-table-column label="操作" width="140" fixed="right">
         <template #default="{ row }">
-          <el-button v-if="row.status === 'pending'" type="danger" text size="small" @click="handleCancel(row)">取消</el-button>
+          <el-button v-if="row.status === 'pending' || row.status === 'approved'" type="danger" text size="small" @click="handleCancel(row)">取消</el-button>
+          <el-button v-if="row.status === 'cancelled' || row.status === 'rejected'" type="primary" text size="small" @click="goProject(row.projectId)">重新报名</el-button>
         </template>
       </el-table-column>
     </el-table>

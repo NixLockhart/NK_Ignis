@@ -20,27 +20,36 @@ export function generateCertificateTextApi(data: CertificateTextParams) {
 // ========== 流式调用 ==========
 
 /**
- * 通用 SSE 流式请求
- * 用原生 fetch 调用后端流式端点，逐块解析并回调
+ * 通用 SSE 流式请求底层实现（policy-qa / certificate-text / nl-query 共用）
+ *
+ * 用原生 fetch 调用后端流式端点，按 \n\n 拆 SSE 事件，每个 `data:` 行解析成 JSON 对象后
+ * 整个对象交给 onEvent 回调。上层包装函数自行决定关心哪些字段（content / chart / status）。
  */
-async function fetchSSE(
+async function streamSSE(
   url: string,
   body: Record<string, unknown>,
-  onChunk: (text: string) => void,
+  onEvent: (obj: Record<string, unknown>) => void,
   onDone?: () => void,
   onError?: (err: string) => void,
 ) {
   const token = localStorage.getItem('token')
   const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
 
-  const resp = await fetch(`${baseUrl}${url}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-  })
+  let resp: Response
+  try {
+    resp = await fetch(`${baseUrl}${url}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    })
+  } catch (e) {
+    onError?.(`无法连接服务器：${(e as Error).message}`)
+    onDone?.()
+    return
+  }
 
   if (!resp.ok || !resp.body) {
     onError?.(`请求失败 (${resp.status})`)
@@ -57,29 +66,23 @@ async function fetchSSE(
     if (done) break
 
     buffer += decoder.decode(value, { stream: true })
-
     // 按双换行拆分 SSE 事件
     const parts = buffer.split('\n\n')
-    // 最后一个可能不完整，留在 buffer
+    // 最后一段可能不完整，留在 buffer 等下一轮
     buffer = parts.pop() || ''
 
     for (const part of parts) {
       const line = part.trim()
       if (!line.startsWith('data:')) continue
-
       const dataStr = line.slice(5).trim()
       if (dataStr === '[DONE]') {
         onDone?.()
         return
       }
-
       try {
-        const obj = JSON.parse(dataStr)
-        if (obj.content) {
-          onChunk(obj.content)
-        }
+        onEvent(JSON.parse(dataStr))
       } catch {
-        // 忽略解析错误
+        // 忽略不规范的 SSE 数据帧
       }
     }
   }
@@ -94,7 +97,13 @@ export function policyQaStreamApi(
   onDone?: () => void,
   onError?: (err: string) => void,
 ) {
-  return fetchSSE('/ai/policy-qa/stream', { question }, onChunk, onDone, onError)
+  return streamSSE(
+    '/ai/policy-qa/stream',
+    { question },
+    (obj) => { if (obj.content) onChunk(obj.content as string) },
+    onDone,
+    onError,
+  )
 }
 
 // 证书文案生成（流式）
@@ -104,7 +113,13 @@ export function generateCertificateTextStreamApi(
   onDone?: () => void,
   onError?: (err: string) => void,
 ) {
-  return fetchSSE('/ai/certificate-text/stream', { ...params }, onChunk, onDone, onError)
+  return streamSSE(
+    '/ai/certificate-text/stream',
+    { ...params },
+    (obj) => { if (obj.content) onChunk(obj.content as string) },
+    onDone,
+    onError,
+  )
 }
 
 // ========== 自然语言数据查询（生成式UI） ==========
@@ -132,7 +147,7 @@ export function nlQueryStreamApi(
   onError?: (err: string) => void,
   onStatus?: (msg: string) => void,
 ) {
-  return fetchSSEWithType(
+  return streamSSE(
     '/ai/nl-query/stream',
     { question },
     (obj) => {
@@ -165,57 +180,4 @@ export interface RecommendItem {
 
 export function getRecommendApi() {
   return request.get('/ai/recommend')
-}
-
-// ========== 带类型的 SSE 解析 ==========
-
-async function fetchSSEWithType(
-  url: string,
-  body: Record<string, unknown>,
-  onEvent: (obj: Record<string, unknown>) => void,
-  onDone?: () => void,
-  onError?: (err: string) => void,
-) {
-  const token = localStorage.getItem('token')
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
-
-  const resp = await fetch(`${baseUrl}${url}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-  })
-
-  if (!resp.ok || !resp.body) {
-    onError?.(`请求失败 (${resp.status})`)
-    onDone?.()
-    return
-  }
-
-  const reader = resp.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-
-    buffer += decoder.decode(value, { stream: true })
-    const parts = buffer.split('\n\n')
-    buffer = parts.pop() || ''
-
-    for (const part of parts) {
-      const line = part.trim()
-      if (!line.startsWith('data:')) continue
-      const dataStr = line.slice(5).trim()
-      if (dataStr === '[DONE]') { onDone?.(); return }
-      try {
-        onEvent(JSON.parse(dataStr))
-      } catch { /* 忽略 */ }
-    }
-  }
-
-  onDone?.()
 }

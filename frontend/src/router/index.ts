@@ -117,7 +117,9 @@ const router = createRouter({
     // 404 兜底
     {
       path: '/:pathMatch(.*)*',
-      redirect: '/dashboard',
+      name: 'NotFound',
+      component: () => import('@/views/error/NotFound.vue'),
+      meta: { requiresAuth: false },
     },
   ],
 })

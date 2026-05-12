@@ -47,16 +47,16 @@ async function handleLogin() {
         </p>
         <div class="flex justify-center gap-8 mt-10 text-sm opacity-80">
           <div class="text-center">
-            <div class="text-2xl font-bold">50+</div>
-            <div class="opacity-70">志愿项目</div>
+            <div class="text-xs opacity-80">全流程</div>
+            <div class="opacity-70">数字化管理</div>
           </div>
           <div class="text-center">
-            <div class="text-2xl font-bold">300+</div>
-            <div class="opacity-70">服务记录</div>
+            <div class="text-xs opacity-80">AI 智能</div>
+            <div class="opacity-70">项目推荐</div>
           </div>
           <div class="text-center">
-            <div class="text-2xl font-bold">AI</div>
-            <div class="opacity-70">智能推荐</div>
+            <div class="text-xs opacity-80">规范化</div>
+            <div class="opacity-70">服务体验</div>
           </div>
         </div>
       </div>

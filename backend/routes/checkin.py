@@ -111,46 +111,54 @@ def reject():
 @checkin_bp.route('/batch-confirm', methods=['POST'])
 @jwt_required()
 def batch_confirm():
-    """批量确认打卡"""
+    """批量确认打卡（返回失败明细）"""
     user = _get_current_user()
     if user.role not in ('leader', 'admin'):
         return error('无权限', 403)
-    data = request.get_json()
-    ids = data.get('ids', []) if data else []
+    data = request.get_json() or {}
+    ids = data.get('ids', [])
     if not ids:
         return error('请选择打卡记录')
-    ok, fail = 0, 0
+    ok = 0
+    failures = []
     for cid in ids:
         try:
             checkin_service.confirm_checkin(cid, user.id)
             ok += 1
-        except Exception:
-            fail += 1
+        except Exception as e:
+            failures.append({'id': cid, 'reason': str(e) or '操作失败'})
     log_operation(user.id, 'confirm_checkin', detail=f'批量确认{ok}条打卡')
-    return success(message=f'成功确认{ok}条，失败{fail}条')
+    return success(
+        data={'okCount': ok, 'failCount': len(failures), 'failures': failures},
+        message=f'成功确认{ok}条，失败{len(failures)}条',
+    )
 
 
 @checkin_bp.route('/batch-reject', methods=['POST'])
 @jwt_required()
 def batch_reject():
-    """批量驳回打卡"""
+    """批量驳回打卡（返回失败明细）"""
     user = _get_current_user()
     if user.role not in ('leader', 'admin'):
         return error('无权限', 403)
-    data = request.get_json()
-    ids = data.get('ids', []) if data else []
+    data = request.get_json() or {}
+    ids = data.get('ids', [])
     remark = data.get('remark', '批量驳回')
     if not ids:
         return error('请选择打卡记录')
-    ok, fail = 0, 0
+    ok = 0
+    failures = []
     for cid in ids:
         try:
             checkin_service.reject_checkin(cid, user.id, remark)
             ok += 1
-        except Exception:
-            fail += 1
+        except Exception as e:
+            failures.append({'id': cid, 'reason': str(e) or '操作失败'})
     log_operation(user.id, 'reject_checkin', detail=f'批量驳回{ok}条打卡')
-    return success(message=f'成功驳回{ok}条，失败{fail}条')
+    return success(
+        data={'okCount': ok, 'failCount': len(failures), 'failures': failures},
+        message=f'成功驳回{ok}条，失败{len(failures)}条',
+    )
 
 
 @checkin_bp.route('/list', methods=['GET'])

@@ -14,6 +14,17 @@ const filterDateRange = ref<[string, string] | null>(null)
 // 操作类型选项从后端动态加载，与 OperationLog.ACTION_LABELS 同源
 const actionOptions = ref<ActionTypeOption[]>([])
 
+// 操作对象类型中文映射（前端展示用）
+const TARGET_TYPE_LABELS: Record<string, string> = {
+  user: '用户',
+  project: '项目',
+  application: '报名',
+  checkin: '打卡',
+  evaluation: '评价',
+  certificate: '证书',
+  college: '学院',
+}
+
 async function fetchActionTypes() {
   try {
     const res = await getActionTypesApi()
@@ -87,7 +98,11 @@ onMounted(async () => {
       </el-table-column>
       <el-table-column prop="userName" label="操作人" width="100" />
       <el-table-column prop="actionLabel" label="操作类型" width="120" />
-      <el-table-column prop="targetType" label="对象类型" width="100" />
+      <el-table-column label="对象类型" width="100">
+        <template #default="{ row }">
+          {{ row.targetType ? (TARGET_TYPE_LABELS[row.targetType] || row.targetType) : '--' }}
+        </template>
+      </el-table-column>
       <el-table-column prop="detail" label="操作描述" min-width="250" />
       <el-table-column prop="ipAddress" label="IP" width="130" />
     </el-table>
